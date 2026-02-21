@@ -24,7 +24,8 @@ pub fn run() {
 
             let db_path = app_dir.join("cjdic.db");
             let is_new = !db_path.exists();
-            println!("{:?}", db_path);
+
+            println!("{}", cjdic2_core::add(1, 2));
 
             let conn = Connection::open(&db_path)?;
 
@@ -44,29 +45,9 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(|_app_handle, event| match event {
-            tauri::RunEvent::ExitRequested { .. } => {
-                // api.prevent_exit();
-                // let handle = app_handle.clone();
-
-                // if let Some(state) = app_handle.try_state::<state::AppState>() {
-                //     if let Ok(conn) = state.conn.lock() {
-                //         if let Err(e) = (|| -> Result<(), rusqlite::Error> {
-                //             conn.execute_batch("PRAGMA optimize;")?;
-                //             conn.execute("PRAGMA wal_checkpoint(FULL);", [])?;
-
-                //             let (_busy, _log, _checkpointed): (i32, i32, i32) =
-                //             conn.query_row("PRAGMA wal_checkpoint(FULL);", [], |row| {
-                //                 Ok((row.get(0)?, row.get(1)?, row.get(2)?))
-                //             })?;
-                //             Ok(())
-                //         })() {
-                //             eprintln!("Shutdown SQL failed: {e}");
-                //         }
-                //     }
-                // }
-
-                // handle.exit(0);
-            }
+            // On exit handler should be avoided for mobile
+            // and rusqlite already closes gracefully by default
+            tauri::RunEvent::ExitRequested { .. } => {}
             _ => {}
         });
 }
