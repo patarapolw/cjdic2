@@ -13,6 +13,9 @@ Future<void> main() async {
   final dir = await getApplicationSupportDirectory();
   init(dbPath: '${dir.path}/app.db');
 
+  // %USERPROFILE%\AppData\Roaming\com.example\flutter_app
+  print(dir.path);
+
   runApp(const MyApp());
 }
 
