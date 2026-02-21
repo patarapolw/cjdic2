@@ -10,9 +10,11 @@
     "build:desktop": "tauri build",
     "build:android": "tauri android build --debug",
     "install:android": "adb install -r src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk",
-    "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build",
-    "preview": "vite preview",
+    "dev": "pnpm run -C src-react dev",
+    "build": "pnpm run -C src-react build",
+    "vue:dev": "vite",
+    "vue:build": "vue-tsc --noEmit && vite build",
+    "vue:preview": "vite preview",
     "tauri": "tauri"
   },
   "dependencies": {

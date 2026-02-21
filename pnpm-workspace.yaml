@@ -1,2 +1,5 @@
+packages:
+  - src-react
+
 onlyBuiltDependencies:
   - esbuild
