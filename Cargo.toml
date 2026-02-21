@@ -1,8 +1,5 @@
 [workspace]
-members = [
-  "src-core",
-  "src-tauri"
-]
+members = ["src-core", "src-tauri", "flutter_app/rust"]
 resolver = "3"
 
 [profile.release]

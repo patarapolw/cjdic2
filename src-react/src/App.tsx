@@ -1,10 +1,10 @@
-import './App.css';
+import "./App.css";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from "@tauri-apps/api/core";
 
-import reactLogo from './assets/react.svg';
+import reactLogo from "./assets/react.svg";
 
 function App() {
   const [greetMsg, setGreetMsg] = useState("");
