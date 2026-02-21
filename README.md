@@ -1,7 +1,16 @@
-# Tauri + Vue + TypeScript
+# cjdic2
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Redoing <https://github.com/patarapolw/cnkan> with using as a dictionary first in mind.
 
-## Recommended IDE Setup
+## Features
 
-- [VS Code](https://code.visualstudio.com/) + [Vue - Official](https://marketplace.visualstudio.com/items?itemName=Vue.volar) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+- Yomitan dictionary zip format support
+- Normalized for Japanese - Chinese interop (possibility of including Korean in the future)
+- Dictionaries can be updated, e.g. latest JMdict, web-scrape Yomitan dict
+
+## TODO
+
+- Project name should become `cjdic`
+- Installer size, particularly for mobile (Android)
+- Downloading and importing dictionaries
+- Updating and syncing dictionary lists

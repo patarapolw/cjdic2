@@ -4,6 +4,12 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "dev:desktop": "tauri dev",
+    "dev:mobile": "tauri dev -c src-tauri/tauri.mobile.conf.json",
+    "dev:android": "tauri android dev",
+    "build:desktop": "tauri build",
+    "build:android": "tauri android build --debug",
+    "install:android": "adb install -r src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk",
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",

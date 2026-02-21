@@ -1,0 +1,13 @@
+{
+  "identifier": "cc.polv.cjdic2",
+  "app": {
+    "windows": [
+      {
+        "title": "cjdic",
+        "width": 450,
+        "height": 800,
+        "maximized": false
+      }
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "folders": [
+    {
+      "path": ".",
+    },
+    {
+      "path": "src-tauri",
+    },
+  ],
+  "settings": {
+    "importSorter.generalConfiguration.sortOnBeforeSave": true,
+    "json.schemaDownload.enable": false,
+  },
+}
