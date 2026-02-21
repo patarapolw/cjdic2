@@ -9,6 +9,10 @@ async function greet() {
   // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
   greetMsg.value = await invoke("greet", { name: name.value });
 }
+
+invoke<{ a: number; b: number }[]>("get_db").then((r) => {
+  name.value = JSON.stringify(r);
+});
 </script>
 
 <template>
@@ -44,7 +48,6 @@ async function greet() {
 .logo.vue:hover {
   filter: drop-shadow(0 0 2em #249b73);
 }
-
 </style>
 <style>
 :root {
@@ -156,5 +159,4 @@ button {
     background-color: #0f0f0f69;
   }
 }
-
 </style>
