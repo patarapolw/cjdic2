@@ -10,10 +10,8 @@
     "build:desktop": "tauri build",
     "build:android": "tauri android build --debug",
     "install:android": "adb install -r src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk",
-    "flutter": "cd flutter_app && flutter run",
-    "flutter:frb_codegen": "flutter_rust_bridge_codegen generate",
-    "dev": "pnpm run -C src-react dev",
-    "build": "pnpm run -C src-react build",
+    "dev": "cd src-react && pnpm run dev",
+    "build": "cd src-react && pnpm run build",
     "tauri": "tauri"
   },
   "devDependencies": {
