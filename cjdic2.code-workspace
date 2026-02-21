@@ -4,6 +4,9 @@
       "path": ".",
     },
     {
+      "path": "src-react",
+    },
+    {
       "path": "src-tauri",
     },
   ],
