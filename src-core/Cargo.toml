@@ -10,3 +10,4 @@ crate-type = ["cdylib", "rlib"]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rusqlite = { version = "0.38.0", features = ["bundled", "unlock_notify"] }
+thiserror = "2.0.18"

@@ -1,4 +1,12 @@
+pub mod api;
+pub mod db;
+pub mod error;
 pub mod models;
+pub mod service;
+
+pub use error::CJDicError;
+pub use models::*;
+pub use service::AppService;
 
 pub fn add(left: u64, right: u64) -> u64 {
     left + right

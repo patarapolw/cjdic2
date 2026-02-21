@@ -1,15 +1,24 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import './App.css';
+
+import { useEffect, useState } from 'react';
+
+import { invoke } from '@tauri-apps/api/core';
+
+import reactLogo from './assets/react.svg';
 
 function App() {
   const [greetMsg, setGreetMsg] = useState("");
   const [name, setName] = useState("");
 
+  useEffect(() => {
+    invoke("list_entries").then((r) => {
+      setGreetMsg(JSON.stringify(r));
+    });
+  }, [name]);
+
   async function greet() {
+    invoke("add_entry", { name });
     // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
   }
 
   return (
@@ -39,6 +48,7 @@ function App() {
         <input
           id="greet-input"
           onChange={(e) => setName(e.currentTarget.value)}
+          autoComplete="off"
           placeholder="Enter a name..."
         />
         <button type="submit">Greet</button>
