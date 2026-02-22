@@ -57,6 +57,10 @@ fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             sequence INTEGER,
             term_tags_id INTEGER
         );
+        CREATE INDEX IF NOT EXISTS terms_term_reading ON terms (term, reading);
+        CREATE INDEX IF NOT EXISTS terms_term ON terms (term);
+        CREATE INDEX IF NOT EXISTS terms_reading ON terms (reading);
+
         CREATE TABLE IF NOT EXISTS term_meta (
             id INTEGER PRIMARY KEY,
             dict_id INTEGER NOT NULL REFERENCES dictionaries(id) ON DELETE CASCADE,
@@ -396,28 +400,29 @@ pub fn search_yomitan(
 ) -> Result<Vec<YomitanRow>, CJDicError> {
     let and_or = if q_term == q_reading { "OR" } else { "AND" };
 
+    // TODO: consider using = if not GLOB string
     let sql = format!(
         r#"
-      SELECT
-        t.term,
-        t.reading,
-        COALESCE(dt.tags,  '')  AS def_tags,
-        COALESCE(r.rules,  '')  AS rules,
-        t.score,
-        g.content               AS glossary_json,
-        t.sequence,
-        COALESCE(tt.tags,  '')  AS term_tags,
-        d.title                 AS dict_title
-      FROM terms t
-      JOIN  glossaries    g  ON g.id  = t.glossary_id
-      JOIN  dictionaries  d  ON d.id  = t.dict_id
-      LEFT JOIN def_tag_sets  dt ON dt.id = t.def_tags_id
-      LEFT JOIN rule_sets      r ON r.id  = t.rules_id
-      LEFT JOIN term_tag_sets tt ON tt.id = t.term_tags_id
-      WHERE t.term LIKE ?1 ESCAPE '\' {} t.reading LIKE ?2 ESCAPE '\'
-      ORDER BY t.score DESC
-      LIMIT ?3 OFFSET ?4
-    "#,
+        SELECT
+            t.term,
+            t.reading,
+            COALESCE(dt.tags,  '')  AS def_tags,
+            COALESCE(r.rules,  '')  AS rules,
+            t.score,
+            g.content               AS glossary_json,
+            t.sequence,
+            COALESCE(tt.tags,  '')  AS term_tags,
+            d.title                 AS dict_title
+        FROM terms t
+        JOIN  glossaries    g  ON g.id  = t.glossary_id
+        JOIN  dictionaries  d  ON d.id  = t.dict_id
+        LEFT JOIN def_tag_sets  dt ON dt.id = t.def_tags_id
+        LEFT JOIN rule_sets      r ON r.id  = t.rules_id
+        LEFT JOIN term_tag_sets tt ON tt.id = t.term_tags_id
+        WHERE t.term GLOB ?1 {} t.reading GLOB ?2
+        ORDER BY t.score DESC
+        LIMIT ?3 OFFSET ?4
+        "#,
         and_or
     );
 

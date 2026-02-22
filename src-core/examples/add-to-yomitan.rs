@@ -1,6 +1,7 @@
 use std::{
     fs::read_dir,
     path::{Path, absolute},
+    time::Instant,
 };
 
 use anyhow::{Context, Ok};
@@ -19,8 +20,14 @@ fn main() -> Result<(), anyhow::Error> {
         let p = e.path();
 
         if p.extension().and_then(|s| s.to_str()) == Some("zip") {
+            let start = Instant::now();
+
             println!("zip_file: {:?}", p);
-            println!("{:?}", import_bundled_zip_file(conn, p)?);
+            println!(
+                "{:?}\n[{:.2?}]",
+                import_bundled_zip_file(conn, p)?,
+                start.elapsed(),
+            );
         } else {
             println!("not zip_file: {:?}", p);
         }
