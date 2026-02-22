@@ -4,6 +4,9 @@ use rusqlite::{Connection, Result};
 
 use crate::models::Entry;
 
+mod yomitan;
+pub use yomitan::{YomitanRow, import_bundled_zip_file, search_yomitan};
+
 pub struct Database {
     conn: Mutex<Connection>,
 }
