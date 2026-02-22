@@ -13,6 +13,26 @@ fn blake3_hex(s: &str) -> String {
     format!("{}", hash(s.as_bytes()))
 }
 
+#[derive(Serialize, Debug)]
+pub struct YomitanZipImportResult {
+    exists: bool,
+    load: bool,
+    error: Option<String>,
+}
+
+#[derive(Serialize, Debug)]
+pub struct YomitanRow {
+    term: String,
+    reading: String,
+    def_tags: String,
+    rules: String,
+    score: i64,
+    glossary_json: String,
+    sequence: Option<i64>,
+    term_tags: String,
+    dict_title: String,
+}
+
 pub struct YomitanDatabase {
     db: Database,
 }
@@ -452,24 +472,4 @@ fn intern(
     let id: i64 = tx.query_row(select_sql, [value], |r| r.get(0))?;
     cache.insert(value.to_string(), id);
     Ok(id)
-}
-
-#[derive(Serialize, Debug)]
-pub struct YomitanZipImportResult {
-    exists: bool,
-    load: bool,
-    error: Option<String>,
-}
-
-#[derive(Serialize, Debug)]
-pub struct YomitanRow {
-    term: String,
-    reading: String,
-    def_tags: String,
-    rules: String,
-    score: i64,
-    glossary_json: String,
-    sequence: Option<i64>,
-    term_tags: String,
-    dict_title: String,
 }

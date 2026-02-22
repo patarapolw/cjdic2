@@ -7,10 +7,13 @@ use std::{
 use anyhow::{Context, Ok};
 use cjdic2_core::db::Database;
 
-fn main() -> Result<(), anyhow::Error> {
-    let db = Database::new("test.db")?;
+mod common;
+use common::get_db_path;
 
-    let zip_dir = Path::new("src-tauri/resources/yomitan");
+fn main() -> Result<(), anyhow::Error> {
+    let db = Database::new(get_db_path())?;
+
+    let zip_dir = Path::new("tmp/yomitan");
     println!("zip_dir: {:?}", absolute(zip_dir)); // Relative to workspace root
 
     for entry in

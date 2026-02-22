@@ -8,20 +8,32 @@ import { invoke } from "@tauri-apps/api/core";
 import { Provider } from "./components/ui/provider";
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+  const [q, setQ] = useState("");
+  const [entries, setEntries] = useState<any[]>([]);
 
   useEffect(() => {
-    invoke("list_entries").then((r) => {
-      setGreetMsg(JSON.stringify(r));
-    });
-  }, [name]);
+    doSearch();
+  }, [q]);
 
-  async function greet() {
-    await invoke("add_entry", { name });
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+  async function doSearch() {
+    if (!q.trim()) {
+      setEntries([]);
+      return;
+    }
 
-    setName("");
+    const ender = q.endsWith(" ") ? "" : "*";
+
+    const qTerm = q.trim() + ender;
+    const qReading = q.trim() + ender;
+
+    setEntries(
+      await invoke("search_yomitan", {
+        qTerm,
+        qReading,
+        limit: 10,
+        offset: 0,
+      }),
+    );
   }
 
   return (
@@ -30,21 +42,24 @@ function App() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            greet();
           }}
         >
           <Group attached w="full">
             <Input
               id="greet-input"
-              value={name}
-              onChange={(e) => setName(e.currentTarget.value)}
+              value={q}
+              onChange={(e) => setQ(e.currentTarget.value)}
               autoComplete="off"
-              placeholder="Enter a name..."
+              placeholder="Search..."
             />
             <Button type="submit">Search</Button>
           </Group>
         </form>
-        <p>{greetMsg}</p>
+        <ol>
+          {entries.map((it, i) => (
+            <li key={i}>{JSON.stringify(it)}</li>
+          ))}
+        </ol>
       </Stack>
     </Provider>
   );

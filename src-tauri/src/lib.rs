@@ -1,3 +1,5 @@
+use std::{fs::create_dir_all, path::Path};
+
 use crate::command::*;
 use cjdic2_core::*;
 use tauri::Manager;
@@ -9,19 +11,21 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            let cfg_dir = app.path().app_config_dir();
-            let app_dir = cfg_dir.unwrap_or_else(|_| {
-                std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
-            });
-            std::fs::create_dir_all(&app_dir)?;
+            let app_dir = app.path().app_config_dir()?;
+            create_dir_all(&app_dir)?;
 
-            let db_path = app_dir.join("cjdic.db");
+            // let db_path = app_dir.join("cjdic.db");
+            let db_path = Path::new(r"D:\Projects\cjdic2\test.db");
             let service = AppService::new(&db_path)?;
             app.manage(service);
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![add_entry, list_entries])
+        .invoke_handler(tauri::generate_handler![
+            add_entry,
+            list_entries,
+            search_yomitan
+        ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(|_app_handle, event| match event {

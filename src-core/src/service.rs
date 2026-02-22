@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::{db::Database, error::CJDicError, models::Entry};
+use crate::{db::Database, db::YomitanRow, error::CJDicError, models::Entry};
 
 pub struct AppService {
     db: Database,
@@ -22,7 +22,16 @@ impl AppService {
         Ok(self.db.fetch_all_entries()?)
     }
 
-    pub fn search_yomitan(&self, _term: &str, _reading: &str) -> Result<(), CJDicError> {
-        Ok(())
+    pub fn search_yomitan(
+        &self,
+        q_term: &str,
+        q_reading: &str,
+        limit: u32,
+        offset: u32,
+    ) -> Result<Vec<YomitanRow>, CJDicError> {
+        Ok(self
+            .db
+            .yomitan()
+            .search_yomitan(q_term, q_reading, limit, offset)?)
     }
 }

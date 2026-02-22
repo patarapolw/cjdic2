@@ -8,6 +8,7 @@ use rusqlite::{Connection, Result};
 use crate::models::Entry;
 
 mod yomitan;
+pub use yomitan::{YomitanRow, YomitanZipImportResult};
 
 #[derive(Clone)]
 pub struct Database {

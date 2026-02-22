@@ -46,3 +46,4 @@ target
 #.idea/
 
 test.db*
+/tmp
