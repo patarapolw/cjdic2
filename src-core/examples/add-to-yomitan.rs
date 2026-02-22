@@ -5,11 +5,11 @@ use std::{
 };
 
 use anyhow::{Context, Ok};
-use cjdic2_core::db::import_bundled_zip_file;
-use rusqlite::Connection;
+use cjdic2_core::db::Database;
 
 fn main() -> Result<(), anyhow::Error> {
-    let conn = &mut Connection::open("test.db")?;
+    let db = Database::new("test.db")?;
+
     let zip_dir = Path::new("src-tauri/resources/yomitan");
     println!("zip_dir: {:?}", absolute(zip_dir)); // Relative to workspace root
 
@@ -23,7 +23,7 @@ fn main() -> Result<(), anyhow::Error> {
             let start = Instant::now();
 
             println!("zip_file: {:?}", p);
-            println!("{:?}", import_bundled_zip_file(conn, p, "ja")?,);
+            println!("{:?}", db.yomitan().import_bundled_zip_file(p, "ja")?,);
             println!("[{:.2?}]", start.elapsed(),);
         } else {
             println!("not zip_file: {:?}", p);

@@ -1,14 +1,13 @@
 use std::time::Instant;
 
 use anyhow::Ok;
-use cjdic2_core::db::search_yomitan;
-use rusqlite::Connection;
+use cjdic2_core::db::Database;
 
 fn main() -> Result<(), anyhow::Error> {
-    let conn = &mut Connection::open("test.db")?;
+    let db = Database::new("test.db")?;
 
     let start = Instant::now();
-    let rs = search_yomitan(conn, "擦る", "する", 10, 0)?;
+    let rs = db.yomitan().search_yomitan("擦る", "する", 10, 0)?;
     println!("{:#?}", rs);
     println!("n={}", rs.len());
     println!("[{:.2?}]", start.elapsed());

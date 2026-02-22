@@ -1,14 +1,13 @@
 use std::time::Instant;
 
 use anyhow::Ok;
-use cjdic2_core::db::create_schema;
-use rusqlite::Connection;
+use cjdic2_core::db::Database;
 
 fn main() -> Result<(), anyhow::Error> {
-    let conn = &mut Connection::open("test.db")?;
+    let db = Database::new("test.db")?;
 
     let start = Instant::now();
-    create_schema(conn)?;
+    db.yomitan().create_schema()?;
     println!("[{:.2?}]", start.elapsed());
 
     Ok(())

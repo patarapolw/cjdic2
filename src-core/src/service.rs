@@ -21,4 +21,8 @@ impl AppService {
     pub fn list_entries(&self) -> Result<Vec<Entry>, CJDicError> {
         Ok(self.db.fetch_all_entries()?)
     }
+
+    pub fn search_yomitan(&self, _term: &str, _reading: &str) -> Result<(), CJDicError> {
+        Ok(())
+    }
 }

@@ -1,22 +1,29 @@
-use std::{path::Path, sync::Mutex};
+use std::{
+    path::Path,
+    sync::{Arc, Mutex},
+};
 
 use rusqlite::{Connection, Result};
 
 use crate::models::Entry;
 
 mod yomitan;
-pub use yomitan::{YomitanRow, create_schema, import_bundled_zip_file, search_yomitan};
 
+#[derive(Clone)]
 pub struct Database {
-    conn: Mutex<Connection>,
+    pub(crate) conn: Arc<Mutex<Connection>>,
 }
 
 impl Database {
     pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
         let conn = Connection::open(path)?;
         Ok(Self {
-            conn: Mutex::new(conn),
+            conn: Arc::new(Mutex::new(conn)),
         })
+    }
+
+    pub fn yomitan(&self) -> yomitan::YomitanDatabase {
+        yomitan::YomitanDatabase::new(self.clone())
     }
 
     pub fn init(&self) -> Result<()> {
