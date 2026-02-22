@@ -2,9 +2,10 @@ import "./App.css";
 
 import { useEffect, useState } from "react";
 
-import { Button, Group, Input, Stack } from "@chakra-ui/react";
+import { Box, Button, Card, Group, Input, Stack } from "@chakra-ui/react";
 import { invoke } from "@tauri-apps/api/core";
 
+import Glossary from "./components/Glossary";
 import { Provider } from "./components/ui/provider";
 
 function App() {
@@ -50,16 +51,35 @@ function App() {
               value={q}
               onChange={(e) => setQ(e.currentTarget.value)}
               autoComplete="off"
+              spellCheck={false}
               placeholder="Search..."
             />
             <Button type="submit">Search</Button>
           </Group>
         </form>
-        <ol>
-          {entries.map((it, i) => (
-            <li key={i}>{JSON.stringify(it)}</li>
+        <Box as={"ol"} listStyleType={"number"} style={{ margin: "1em" }}>
+          {entries.map(({ term, reading, glossary_json, ...it }, i) => (
+            <li key={i}>
+              <details>
+                <summary>
+                  {term} ({reading})
+                </summary>
+
+                <Card.Root>
+                  <Card.Header>{JSON.stringify(it)}</Card.Header>
+                  <Card.Body>
+                    {JSON.parse(glossary_json).map((g: any) => (
+                      <Glossary
+                        glossary={g}
+                        onTermClicked={(t) => setQ(t + " ")}
+                      />
+                    ))}
+                  </Card.Body>
+                </Card.Root>
+              </details>
+            </li>
           ))}
-        </ol>
+        </Box>
       </Stack>
     </Provider>
   );
