@@ -23,11 +23,8 @@ fn main() -> Result<(), anyhow::Error> {
             let start = Instant::now();
 
             println!("zip_file: {:?}", p);
-            println!(
-                "{:?}\n[{:.2?}]",
-                import_bundled_zip_file(conn, p)?,
-                start.elapsed(),
-            );
+            println!("{:?}", import_bundled_zip_file(conn, p, "ja")?,);
+            println!("[{:.2?}]", start.elapsed(),);
         } else {
             println!("not zip_file: {:?}", p);
         }

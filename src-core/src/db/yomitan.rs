@@ -13,9 +13,10 @@ fn blake3_hex(s: &str) -> String {
     format!("{}", hash(s.as_bytes()))
 }
 
-fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
+pub fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
-        "PRAGMA journal_mode = WAL;
+        "
+        PRAGMA journal_mode = WAL;
         PRAGMA foreign_keys = ON;
         PRAGMA synchronous  = NORMAL;
         PRAGMA cache_size   = -65536;
@@ -32,9 +33,9 @@ fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             author       TEXT,
             url          TEXT,
             description  TEXT,
-            is_bundled   INTEGER NOT NULL DEFAULT 1,
             sort_order   INTEGER NOT NULL DEFAULT 0,
             installed_at TEXT    NOT NULL DEFAULT (datetime('now')),
+            lang         TEXT    NOT NULL,
             UNIQUE (title, revision)
         );
         CREATE TABLE IF NOT EXISTS glossaries (
@@ -57,10 +58,6 @@ fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             sequence INTEGER,
             term_tags_id INTEGER
         );
-        CREATE INDEX IF NOT EXISTS terms_term_reading ON terms (term, reading);
-        CREATE INDEX IF NOT EXISTS terms_term ON terms (term);
-        CREATE INDEX IF NOT EXISTS terms_reading ON terms (reading);
-
         CREATE TABLE IF NOT EXISTS term_meta (
             id INTEGER PRIMARY KEY,
             dict_id INTEGER NOT NULL REFERENCES dictionaries(id) ON DELETE CASCADE,
@@ -89,6 +86,15 @@ fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             meanings TEXT NOT NULL DEFAULT '[]',
             stats TEXT NOT NULL DEFAULT '{}'
         );
+        ",
+    )?;
+
+    conn.execute_batch(
+        "
+        CREATE INDEX IF NOT EXISTS dictionaries_lang ON dictionaries (lang);
+
+        CREATE INDEX IF NOT EXISTS terms_term ON terms (term);
+        CREATE INDEX IF NOT EXISTS terms_reading ON terms (reading);
         ",
     )?;
 
@@ -124,13 +130,14 @@ fn intern(
 #[derive(Serialize, Debug)]
 pub struct YomitanZipImportResult {
     exists: bool,
-    done: bool,
+    load: bool,
     error: Option<String>,
 }
 
 pub fn import_bundled_zip_file(
     conn: &mut Connection,
     zip_path: PathBuf,
+    lang: &str,
 ) -> anyhow::Result<YomitanZipImportResult, CJDicError> {
     create_schema(&conn)?;
 
@@ -148,7 +155,7 @@ pub fn import_bundled_zip_file(
             eprintln!("{}", e);
             return Ok(YomitanZipImportResult {
                 exists: false,
-                done: false,
+                load: false,
                 error: Some(format!("{}", e)),
             });
         }
@@ -172,20 +179,21 @@ pub fn import_bundled_zip_file(
     if exists {
         return Ok(YomitanZipImportResult {
             exists: true,
-            done: false,
+            load: false,
             error: None,
         });
     }
 
     let tx = conn.transaction()?;
     tx.execute(
-            "INSERT INTO dictionaries (title, revision, author, url, description, is_bundled) VALUES (?1, ?2, ?3, ?4, ?5, 1)",
-            [
+            "INSERT INTO dictionaries (title, revision, author, url, description, lang) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![
                 index_file.get("title").and_then(Value::as_str),
                 index_file.get("revision").and_then(Value::as_str),
                 index_file.get("author").and_then(Value::as_str),
                 index_file.get("url").and_then(Value::as_str),
                 index_file.get("description").and_then(Value::as_str),
+                lang,
             ],
         )?;
 
@@ -373,7 +381,7 @@ pub fn import_bundled_zip_file(
 
     Ok(YomitanZipImportResult {
         exists: true,
-        done: true,
+        load: true,
         error: None,
     })
 }
