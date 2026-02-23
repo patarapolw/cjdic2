@@ -1,14 +1,20 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use crate::{db::Database, db::YomitanRow, error::CJDicError, models::Entry};
+use rusqlite::Connection;
+
+use crate::{
+    db::{Database, YomitanRow, YomitanWriter, YomitanZipImportResult},
+    error::CJDicError,
+    models::Entry,
+};
 
 pub struct AppService {
     db: Database,
 }
 
 impl AppService {
-    pub fn new<P: AsRef<Path>>(db_path: P) -> Result<Self, CJDicError> {
-        let db = Database::new(db_path)?;
+    pub fn new<P: AsRef<Path>>(db_dir: P) -> Result<Self, CJDicError> {
+        let db = Database::new(db_dir)?;
         db.init()?;
         Ok(Self { db })
     }
@@ -31,7 +37,22 @@ impl AppService {
     ) -> Result<Vec<YomitanRow>, CJDicError> {
         Ok(self
             .db
-            .yomitan()
+            .yomitan()?
             .search_yomitan(q_term, q_reading, limit, offset)?)
+    }
+
+    pub fn get_yomitan_writer(&self) -> Result<YomitanWriter, CJDicError> {
+        let conn = Connection::open(self.db.dir.join("yomitan.db"))?;
+        let writer = YomitanWriter::new(conn);
+        writer.create_schema()?;
+        Ok(writer)
+    }
+
+    pub fn import_yomitan_zip_file(
+        writer: &mut YomitanWriter,
+        zip_file: PathBuf,
+        lang: &str,
+    ) -> Result<YomitanZipImportResult, CJDicError> {
+        Ok(writer.import_bundled_zip_file(zip_file, lang)?)
     }
 }

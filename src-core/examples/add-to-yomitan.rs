@@ -5,13 +5,14 @@ use std::{
 };
 
 use anyhow::{Context, Ok};
-use cjdic2_core::db::Database;
+use cjdic2_core::AppService;
 
 mod common;
-use common::get_db_path;
+use common::get_db_dir;
 
 fn main() -> Result<(), anyhow::Error> {
-    let db = Database::new(get_db_path())?;
+    let service = AppService::new(get_db_dir())?;
+    let mut writer = service.get_yomitan_writer()?;
 
     let zip_dir = Path::new("tmp/yomitan");
     println!("zip_dir: {:?}", absolute(zip_dir)); // Relative to workspace root
@@ -26,7 +27,10 @@ fn main() -> Result<(), anyhow::Error> {
             let start = Instant::now();
 
             println!("zip_file: {:?}", p);
-            println!("{:?}", db.yomitan().import_bundled_zip_file(p, "ja")?,);
+            println!(
+                "{:?}",
+                AppService::import_yomitan_zip_file(&mut writer, p, "ja")?,
+            );
             println!("[{:.2?}]", start.elapsed(),);
         } else {
             println!("not zip_file: {:?}", p);

@@ -14,9 +14,9 @@ pub fn run() {
             let app_dir = app.path().app_config_dir()?;
             create_dir_all(&app_dir)?;
 
-            // let db_path = app_dir.join("cjdic.db");
-            let db_path = Path::new(r"D:\Projects\cjdic2\test.db");
-            let service = AppService::new(&db_path)?;
+            // db_path is app_dir;
+            let db_dir = Path::new(r"D:\Projects\cjdic2\tmp\save-db");
+            let service = AppService::new(&db_dir)?;
             app.manage(service);
 
             Ok(())

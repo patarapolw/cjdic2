@@ -1,16 +1,16 @@
 use std::time::Instant;
 
 use anyhow::Ok;
-use cjdic2_core::db::Database;
+use cjdic2_core::AppService;
 
 mod common;
-use common::get_db_path;
+use common::get_db_dir;
 
 fn main() -> Result<(), anyhow::Error> {
-    let db = Database::new(get_db_path())?;
+    let service = AppService::new(get_db_dir())?;
 
     let start = Instant::now();
-    db.yomitan().create_schema()?;
+    service.get_yomitan_writer()?;
     println!("[{:.2?}]", start.elapsed());
 
     Ok(())
