@@ -113,7 +113,7 @@ impl YomitanWriter {
             CREATE INDEX IF NOT EXISTS dictionaries_lang ON dictionaries (lang);
 
             CREATE INDEX IF NOT EXISTS terms_dict_id ON terms (dict_id);
-            CREATE INDEX IF NOT EXISTS terms_term ON terms (term);
+            CREATE INDEX IF NOT EXISTS terms_term_LOWER ON terms (LOWER(term));
             CREATE INDEX IF NOT EXISTS terms_reading ON terms (reading);
 
             CREATE INDEX IF NOT EXISTS term_meta_dict_id ON term_meta (dict_id);

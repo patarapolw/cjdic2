@@ -1,6 +1,6 @@
 import "./App.css";
 
-import { useEffect, useState } from "react";
+import { CompositionEventHandler, useEffect, useState } from "react";
 
 import { Box, Button, Card, Group, Input, Stack } from "@chakra-ui/react";
 import { invoke } from "@tauri-apps/api/core";
@@ -11,21 +11,56 @@ import { Provider } from "./components/ui/provider";
 function App() {
   const [q, setQ] = useState("");
   const [entries, setEntries] = useState<any[]>([]);
+  const [searchTimeout, setSearchTimeout] = useState(0);
+  const [furigana, setFurigana] = useState("");
 
   useEffect(() => {
-    doSearch();
+    trySearch();
   }, [q]);
 
-  async function doSearch() {
+  async function trySearch() {
     if (!q.trim()) {
       setEntries([]);
       return;
     }
 
-    const ender = q.endsWith(" ") ? "" : "*";
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
 
-    const qTerm = q.trim() + ender;
-    const qReading = q.trim() + ender;
+    setSearchTimeout(
+      setTimeout(() => {
+        runSearch();
+      }, 250),
+    );
+  }
+
+  async function runSearch() {
+    const ender = /\p{Z}$/u.test(q) ? "" : "*";
+
+    const re = /\<(.+?)\>\[(.+?)\]/g;
+
+    let qTerm = "";
+    let qReading = "";
+
+    q.trim()
+      .split(re)
+      .map((s, i) => {
+        switch (i % 3) {
+          case 1:
+            qTerm += s;
+            break;
+          case 2:
+            qReading += s;
+            break;
+          default:
+            qTerm += s;
+            qReading += s;
+        }
+      });
+
+    qTerm += ender;
+    qReading += ender;
 
     setEntries(
       await invoke("search_yomitan", {
@@ -35,6 +70,51 @@ function App() {
         offset: 0,
       }),
     );
+  }
+
+  const FURIGANA_REGEX = /^[\p{scx=Hiragana}\p{scx=Katakana}]+$/u;
+  const KANJI_REGEX = /([\p{sc=Han}\p{N}々〆ヵヶ]+)/u;
+
+  const updateFurigana: CompositionEventHandler = ({
+    data: compositionData,
+  }) => {
+    if (FURIGANA_REGEX.test(compositionData)) {
+      setFurigana(compositionData);
+    }
+  };
+
+  const addFurigana: CompositionEventHandler = ({ data: compositionData }) => {
+    const cleanedFuri = [...furigana.replace(/ｎ/g, "ん")]
+      .map((c) => katakanaToHiragana(c))
+      .join("");
+
+    let parts = compositionData.split(KANJI_REGEX);
+    if (parts.length === 1) return;
+
+    const hiraganaParts = parts.map((p) =>
+      [...p].map((c) => katakanaToHiragana(c)).join(""),
+    );
+    const regex = new RegExp(
+      `^${hiraganaParts.map((p, idx) => `(${idx & 1 ? ".+" : p})`).join("")}$`,
+    );
+    let rt: (string | null)[] = furigana.match(regex) || [];
+    if (!rt.length) {
+      parts = [compositionData];
+      rt = [null, cleanedFuri];
+    }
+    rt.shift();
+
+    const markup = parts
+      .map((p, idx) => (idx & 1 ? `<${p}>[${rt[idx]}]` : p))
+      .join("");
+    setQ(markup);
+  };
+
+  function katakanaToHiragana(k: string) {
+    let c = k.charCodeAt(0);
+    return c >= 12449 && c <= 12531
+      ? String.fromCharCode(k.charCodeAt(0) - 96)
+      : k;
   }
 
   return (
@@ -50,6 +130,8 @@ function App() {
               id="greet-input"
               value={q}
               onChange={(e) => setQ(e.currentTarget.value)}
+              onCompositionUpdate={updateFurigana}
+              onCompositionEnd={addFurigana}
               autoComplete="off"
               spellCheck={false}
               placeholder="Search..."

@@ -53,7 +53,7 @@ impl YomitanDatabase {
         LEFT JOIN yomitan.def_tag_sets  dt ON dt.id = t.def_tags_id
         LEFT JOIN yomitan.rule_sets     r  ON r.id  = t.rules_id
         LEFT JOIN yomitan.term_tag_sets tt ON tt.id = t.term_tags_id
-        WHERE t.term GLOB ?1 {} t.reading GLOB ?2
+        WHERE LOWER(t.term) GLOB ?1 {} t.reading GLOB ?2
         ORDER BY t.score DESC
         LIMIT ?3 OFFSET ?4
         "#,
@@ -63,19 +63,22 @@ impl YomitanDatabase {
         let conn = self.db.conn.lock().unwrap();
 
         let mut stmt = conn.prepare(&sql)?;
-        let rows = stmt.query_map(params![q_term, q_reading, limit, offset], |r| {
-            Ok(YomitanRow {
-                term: r.get(0)?,
-                reading: r.get(1)?,
-                def_tags: r.get(2)?,
-                rules: r.get(3)?,
-                score: r.get(4)?,
-                glossary_json: r.get(5)?,
-                sequence: r.get(6)?,
-                term_tags: r.get(7)?,
-                dict_title: r.get(8)?,
-            })
-        })?;
+        let rows = stmt.query_map(
+            params![q_term.to_ascii_lowercase(), q_reading, limit, offset],
+            |r| {
+                Ok(YomitanRow {
+                    term: r.get(0)?,
+                    reading: r.get(1)?,
+                    def_tags: r.get(2)?,
+                    rules: r.get(3)?,
+                    score: r.get(4)?,
+                    glossary_json: r.get(5)?,
+                    sequence: r.get(6)?,
+                    term_tags: r.get(7)?,
+                    dict_title: r.get(8)?,
+                })
+            },
+        )?;
 
         let mut out = Vec::new();
         for r in rows {
