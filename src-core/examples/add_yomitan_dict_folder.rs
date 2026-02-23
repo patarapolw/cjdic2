@@ -14,7 +14,7 @@ fn main() -> Result<(), anyhow::Error> {
     let service = AppService::new(get_db_dir())?;
     let mut writer = service.get_yomitan_writer()?;
 
-    let zip_dir = Path::new("tmp/yomitan");
+    let zip_dir = Path::new("src-tauri/resources/yomitan");
     println!("zip_dir: {:?}", absolute(zip_dir)); // Relative to workspace root
 
     for entry in

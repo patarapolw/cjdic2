@@ -23,6 +23,9 @@
     }
   },
   "bundle": {
+    "resources": [
+      "resources/**/*.zip"
+    ],
     "active": true,
     "targets": "all",
     "icon": [

@@ -63,17 +63,18 @@ impl Database {
             } else {
                 current_dir()?.join(dir)
             };
-            let mut path = path
+            let path = path
                 .join("yomitan.db")
                 .to_string_lossy()
                 .replace(r"\", r"/");
 
             #[cfg(windows)]
-            {
-                if !path.starts_with("/") {
-                    path = format!("/{}", path);
-                }
-            }
+            let path = if !path.starts_with("/") {
+                format!("/{}", path)
+            } else {
+                path.to_string()
+            };
+
             let uri = format!("file:{}?mode=ro&immutable=1", path);
 
             conn.execute("ATTACH DATABASE ?1 AS yomitan", [uri])?;

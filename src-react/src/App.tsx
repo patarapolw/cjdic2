@@ -8,9 +8,21 @@ import { invoke } from "@tauri-apps/api/core";
 import Glossary from "./components/Glossary";
 import { Provider } from "./components/ui/provider";
 
+interface Entry {
+  term: string;
+  reading: string;
+  glossary_json: string;
+  def_tags: string;
+  rules: string;
+  score: number;
+  sequence: number;
+  term_tags: string;
+  dict_title: string;
+}
+
 function App() {
   const [q, setQ] = useState("");
-  const [entries, setEntries] = useState<any[]>([]);
+  const [entries, setEntries] = useState<Entry[]>([]);
   const [searchTimeout, setSearchTimeout] = useState(0);
   const [furigana, setFurigana] = useState("");
 
@@ -140,35 +152,39 @@ function App() {
           </Group>
         </form>
         <Box as={"ol"} listStyleType={"number"} style={{ margin: "1em" }}>
-          {entries.map(({ term, reading, glossary_json, ...it }, i) => (
-            <li key={i}>
-              <details>
-                <summary>
-                  {term} ({reading})
-                </summary>
+          {entries.map(
+            ({ term, reading, dict_title, glossary_json, ...it }, i) => (
+              <li key={i}>
+                <details>
+                  <summary>
+                    {term} ({reading}) 【{dict_title}】
+                  </summary>
 
-                <Card.Root>
-                  <Card.Header>{JSON.stringify(it)}</Card.Header>
-                  <Card.Body>
-                    <div
-                      style={{
-                        gap: "1em",
-                        display: "flex",
-                        flexDirection: "column",
-                      }}
-                    >
-                      {JSON.parse(glossary_json).map((g: any) => (
-                        <Glossary
-                          glossary={g}
-                          onTermClicked={(t) => setQ(t + " ")}
-                        />
-                      ))}
-                    </div>
-                  </Card.Body>
-                </Card.Root>
-              </details>
-            </li>
-          ))}
+                  <Card.Root>
+                    <Card.Header>
+                      {JSON.stringify(it, (_, v) => v || undefined)}
+                    </Card.Header>
+                    <Card.Body>
+                      <div
+                        style={{
+                          gap: "1em",
+                          display: "flex",
+                          flexDirection: "column",
+                        }}
+                      >
+                        {JSON.parse(glossary_json).map((g: any) => (
+                          <Glossary
+                            glossary={g}
+                            onTermClicked={(t) => setQ(t + " ")}
+                          />
+                        ))}
+                      </div>
+                    </Card.Body>
+                  </Card.Root>
+                </details>
+              </li>
+            ),
+          )}
         </Box>
       </Stack>
     </Provider>
