@@ -68,12 +68,20 @@ function App() {
                 <Card.Root>
                   <Card.Header>{JSON.stringify(it)}</Card.Header>
                   <Card.Body>
-                    {JSON.parse(glossary_json).map((g: any) => (
-                      <Glossary
-                        glossary={g}
-                        onTermClicked={(t) => setQ(t + " ")}
-                      />
-                    ))}
+                    <div
+                      style={{
+                        gap: "1em",
+                        display: "flex",
+                        flexDirection: "column",
+                      }}
+                    >
+                      {JSON.parse(glossary_json).map((g: any) => (
+                        <Glossary
+                          glossary={g}
+                          onTermClicked={(t) => setQ(t + " ")}
+                        />
+                      ))}
+                    </div>
                   </Card.Body>
                 </Card.Root>
               </details>

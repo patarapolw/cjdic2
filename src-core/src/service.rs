@@ -43,7 +43,7 @@ impl AppService {
 
     pub fn get_yomitan_writer(&self) -> Result<YomitanWriter, CJDicError> {
         let conn = Connection::open(self.db.dir.join("yomitan.db"))?;
-        let writer = YomitanWriter::new(conn);
+        let writer = YomitanWriter::new(conn)?;
         writer.create_schema()?;
         Ok(writer)
     }
@@ -53,6 +53,13 @@ impl AppService {
         zip_file: PathBuf,
         lang: &str,
     ) -> Result<YomitanZipImportResult, CJDicError> {
-        Ok(writer.import_bundled_zip_file(zip_file, lang)?)
+        Ok(writer.import_dictionary_zip_file(zip_file, lang)?)
+    }
+
+    pub fn remove_yomitan_dictionary(
+        writer: &mut YomitanWriter,
+        title: &str,
+    ) -> Result<(), CJDicError> {
+        Ok(writer.drop_dictionary(title)?)
     }
 }

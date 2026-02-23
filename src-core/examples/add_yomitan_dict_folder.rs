@@ -31,7 +31,7 @@ fn main() -> Result<(), anyhow::Error> {
                 "{:?}",
                 AppService::import_yomitan_zip_file(&mut writer, p, "ja")?,
             );
-            println!("[{:.2?}]", start.elapsed(),);
+            println!("[{:.2?}]", start.elapsed());
         } else {
             println!("not zip_file: {:?}", p);
         }

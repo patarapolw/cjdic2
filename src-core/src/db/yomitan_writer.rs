@@ -1,10 +1,9 @@
-use std::{collections::HashMap, fs::File, io::Read, path::PathBuf};
-
 use anyhow::Context;
 use blake3::hash;
 use rusqlite::{Connection, Result, Transaction, params};
 use serde::Serialize;
 use serde_json::Value;
+use std::{collections::HashMap, fs::File, io::Read, path::PathBuf, time::Instant};
 use zip::ZipArchive;
 
 use crate::CJDicError;
@@ -25,19 +24,23 @@ pub struct YomitanWriter {
 }
 
 impl YomitanWriter {
-    pub fn new(conn: Connection) -> Self {
-        Self { conn }
-    }
-
-    pub fn create_schema(&self) -> Result<()> {
-        self.conn.execute_batch(
-        "
+    pub fn new(conn: Connection) -> Result<Self> {
+        conn.execute_batch(
+            "
             PRAGMA journal_mode = WAL;
             PRAGMA foreign_keys = ON;
             PRAGMA synchronous  = NORMAL;
             PRAGMA cache_size   = -65536;
             PRAGMA temp_store   = MEMORY;
+            ",
+        )?;
 
+        Ok(Self { conn })
+    }
+
+    pub fn create_schema(&self) -> Result<()> {
+        self.conn.execute_batch(
+        "
             CREATE TABLE IF NOT EXISTS schema_meta (
                 key   TEXT PRIMARY KEY,
                 value TEXT NOT NULL
@@ -107,11 +110,18 @@ impl YomitanWriter {
 
         self.conn.execute_batch(
             "
-        CREATE INDEX IF NOT EXISTS dictionaries_lang ON dictionaries (lang);
+            CREATE INDEX IF NOT EXISTS dictionaries_lang ON dictionaries (lang);
 
-        CREATE INDEX IF NOT EXISTS terms_term ON terms (term);
-        CREATE INDEX IF NOT EXISTS terms_reading ON terms (reading);
-        ",
+            CREATE INDEX IF NOT EXISTS terms_dict_id ON terms (dict_id);
+            CREATE INDEX IF NOT EXISTS terms_term ON terms (term);
+            CREATE INDEX IF NOT EXISTS terms_reading ON terms (reading);
+
+            CREATE INDEX IF NOT EXISTS term_meta_dict_id ON term_meta (dict_id);
+
+            CREATE INDEX IF NOT EXISTS tags_dict_id ON tags (dict_id);
+
+            CREATE INDEX IF NOT EXISTS kanji_dict_id ON kanji (dict_id);
+            ",
         )?;
 
         let mut stmt = self
@@ -131,12 +141,15 @@ impl YomitanWriter {
         Ok(())
     }
 
-    pub fn import_bundled_zip_file(
+    pub fn import_dictionary_zip_file(
         &mut self,
         zip_file: PathBuf,
         lang: &str,
     ) -> anyhow::Result<YomitanZipImportResult, CJDicError> {
-        self.create_schema()?;
+        self.create_schema()?; // < 1 ms
+
+        let start_time = Instant::now();
+        self.conn.execute_batch("PRAGMA foreign_keys = off")?;
 
         let f =
             File::open(&zip_file).with_context(|| format!("opening zip {}", zip_file.display()))?;
@@ -159,36 +172,57 @@ impl YomitanWriter {
             }
         };
 
-        let title = index_file
-            .get("title")
-            .and_then(Value::as_str)
-            .unwrap_or("")
-            .to_string();
+        fn remove_timestamp(s: &str) -> String {
+            if let Some(pos) = s.rfind('[') {
+                // Trim whitespace only before the '[' and return the substring
+                let trimmed_before_bracket = s[..pos].trim_end();
+                trimmed_before_bracket.to_string()
+            } else {
+                s.to_string() // Return the original string if no '[' is found
+            }
+        }
+
+        let title = remove_timestamp(
+            &index_file
+                .get("title")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string(),
+        );
+
         let revision = index_file
             .get("revision")
             .and_then(Value::as_str)
             .unwrap_or("")
             .to_string();
 
-        // Skip if already installed
-        let exists: bool = self
-            .conn
-            .prepare("SELECT 1 FROM dictionaries WHERE title = ?1 AND revision = ?2")?
-            .exists([title, revision])?;
-        if exists {
-            return Ok(YomitanZipImportResult {
-                exists: true,
-                load: false,
-                error: None,
-            });
+        {
+            let title: &str = &title;
+            // Skip if already installed
+            let mut stmt = self
+                .conn
+                .prepare("SELECT (revision < ?2) FROM dictionaries WHERE title = ?1")?;
+            let mut rows = stmt.query(params![title, revision])?;
+            if let Some(row) = rows.next()? {
+                let is_outdated: bool = row.get(0)?;
+                if is_outdated {
+                    self.drop_dictionary(title)?;
+                } else {
+                    return Ok(YomitanZipImportResult {
+                        exists: true,
+                        load: false,
+                        error: None,
+                    });
+                }
+            }
         }
 
         let tx = self.conn.transaction()?;
         tx.execute(
             "INSERT INTO dictionaries (title, revision, author, url, description, lang) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             params![
-                index_file.get("title").and_then(Value::as_str),
-                index_file.get("revision").and_then(Value::as_str),
+                title,
+                revision,
                 index_file.get("author").and_then(Value::as_str),
                 index_file.get("url").and_then(Value::as_str),
                 index_file.get("description").and_then(Value::as_str),
@@ -377,13 +411,33 @@ impl YomitanWriter {
 
         tx.commit()?;
 
-        self.conn.execute_batch("VACUUM;")?;
+        println!(
+            "Importing {:?} takes {:.2?}",
+            zip_file,
+            start_time.elapsed()
+        );
+
+        self.conn.execute_batch(
+            "
+            PRAGMA foreign_keys = on;
+            PRAGMA check_foreign_keys;
+            ",
+        )?; // < 1 ms
+
+        // self.conn.execute_batch("VACUUM;")?; // Not needed, twice time taken than import
 
         Ok(YomitanZipImportResult {
             exists: true,
             load: true,
             error: None,
         })
+    }
+
+    pub fn drop_dictionary(&self, title: &str) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM dictionaries WHERE title = ?1", [title])?;
+
+        Ok(())
     }
 }
 
