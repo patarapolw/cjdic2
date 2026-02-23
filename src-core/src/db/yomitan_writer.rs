@@ -12,6 +12,13 @@ fn blake3_hex(s: &str) -> String {
     format!("{}", hash(s.as_bytes()))
 }
 
+pub(super) fn normalize_term(s: &str) -> String {
+    s.chars()
+        .filter(|c| c.is_alphabetic())
+        .flat_map(|c| c.to_lowercase())
+        .collect()
+}
+
 #[derive(Serialize, Debug)]
 pub struct YomitanZipImportResult {
     pub exists: bool,
@@ -38,7 +45,7 @@ impl YomitanWriter {
         Ok(Self { conn })
     }
 
-    pub fn create_schema(&self) -> Result<()> {
+    pub fn create_schema(&mut self) -> Result<()> {
         self.conn.execute_batch(
         "
             CREATE TABLE IF NOT EXISTS schema_meta (
@@ -54,7 +61,7 @@ impl YomitanWriter {
                 description  TEXT,
                 sort_order   INTEGER NOT NULL DEFAULT 0,
                 installed_at TEXT    NOT NULL DEFAULT (datetime('now')),
-                lang         TEXT    NOT NULL,
+                lang         TEXT    NOT NULL,      -- custom
                 UNIQUE (title, revision)
             );
             CREATE TABLE IF NOT EXISTS glossaries (
@@ -75,7 +82,8 @@ impl YomitanWriter {
                 score INTEGER NOT NULL DEFAULT 0,
                 glossary_id INTEGER NOT NULL REFERENCES glossaries(id),
                 sequence INTEGER,
-                term_tags_id INTEGER
+                term_tags_id INTEGER,
+                term_norm TEXT                      -- custom
             );
             CREATE TABLE IF NOT EXISTS term_meta (
                 id INTEGER PRIMARY KEY,
@@ -115,6 +123,7 @@ impl YomitanWriter {
             CREATE INDEX IF NOT EXISTS terms_dict_id ON terms (dict_id);
             CREATE INDEX IF NOT EXISTS terms_term_LOWER ON terms (LOWER(term));
             CREATE INDEX IF NOT EXISTS terms_reading ON terms (reading);
+            CREATE INDEX IF NOT EXISTS terms_term_reading_score ON terms(term, reading, score DESC);
 
             CREATE INDEX IF NOT EXISTS term_meta_dict_id ON term_meta (dict_id);
 
@@ -123,6 +132,8 @@ impl YomitanWriter {
             CREATE INDEX IF NOT EXISTS kanji_dict_id ON kanji (dict_id);
             ",
         )?;
+
+        self.create_materialized_views()?;
 
         let mut stmt = self
             .conn
@@ -137,6 +148,83 @@ impl YomitanWriter {
                 )?
                 .execute([])?;
         }
+
+        Ok(())
+    }
+
+    fn create_materialized_views(&mut self) -> Result<()> {
+        self.conn.execute_batch(
+            "
+            CREATE TABLE IF NOT EXISTS view_terms_term_rank (
+                term        TEXT NOT NULL,
+                reading     TEXT NOT NULL,
+                max_score   INTEGER NOT NULL,
+                PRIMARY KEY (term, reading)
+            );
+            ",
+        )?;
+
+        self.conn.execute_batch(
+            "
+            CREATE TRIGGER IF NOT EXISTS terms_max_score_after_insert
+            AFTER INSERT ON terms
+            WHEN NEW.score > 0
+            -- This automatically excludes NULL (since NULL > 0 is false)
+            BEGIN
+                INSERT INTO term_rank (term, reading, max_score)
+                VALUES (NEW.term, NEW.reading, NEW.score)
+                ON CONFLICT(term, reading)
+                DO UPDATE SET max_score =
+                    CASE
+                        WHEN NEW.score > max_score
+                        THEN NEW.score
+                        ELSE max_score
+                    END;
+            END;
+            ",
+        )?;
+        // no AFTER DELETE trigger yet. existence of max score is more important.
+
+        {
+            let mut stmt = self.conn.prepare("SELECT 1 FROM view_terms_term_rank")?;
+            if !(stmt.exists([])?) {
+                self.conn.execute_batch(
+                    "
+                    INSERT INTO view_terms_term_rank
+                    SELECT term, reading, MAX(score)
+                    FROM terms
+                    GROUP BY term, reading
+                    ",
+                )?;
+                // 1.9 sec
+            }
+        }
+
+        let tx = self.conn.transaction()?;
+        {
+            let mut stmt = tx.prepare("SELECT rowid, term FROM terms WHERE term_norm IS NULL")?;
+
+            let rows = stmt.query_map([], |row| {
+                Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+            })?;
+
+            let mut update_stmt = tx.prepare("UPDATE terms SET term_norm = ?1 WHERE rowid = ?2")?;
+
+            for row in rows {
+                let (rowid, term) = row?;
+                let norm = normalize_term(&term); // your Unicode normalizer
+                update_stmt.execute((&norm, rowid))?;
+            }
+        }
+        tx.commit()?;
+        // 5 sec
+
+        self.conn.execute_batch(
+            "
+            CREATE INDEX IF NOT EXISTS terms_term_norm ON terms (term_norm);
+            ",
+        )?;
+        // 1 sec
 
         Ok(())
     }

@@ -43,7 +43,7 @@ impl AppService {
 
     pub fn get_yomitan_writer(&self) -> Result<YomitanWriter, CJDicError> {
         let conn = Connection::open(self.db.dir.join("yomitan.db"))?;
-        let writer = YomitanWriter::new(conn)?;
+        let mut writer = YomitanWriter::new(conn)?;
         writer.create_schema()?;
         Ok(writer)
     }

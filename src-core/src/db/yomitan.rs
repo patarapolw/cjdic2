@@ -1,7 +1,10 @@
 use rusqlite::{Result, params};
 use serde::Serialize;
 
-use crate::{CJDicError, db::Database};
+use crate::{
+    CJDicError,
+    db::{Database, yomitan_writer::normalize_term},
+};
 
 #[derive(Serialize, Debug)]
 pub struct YomitanRow {
@@ -34,6 +37,12 @@ impl YomitanDatabase {
     ) -> Result<Vec<YomitanRow>, CJDicError> {
         let and_or = if q_term == q_reading { "OR" } else { "AND" };
 
+        let q_term_norm = if q_term.ends_with("*") {
+            normalize_term(&q_term[..q_term.len() - 1]) + "*"
+        } else {
+            normalize_term(q_term)
+        };
+
         // TODO: consider using = if not GLOB string
         let sql = format!(
             r#"
@@ -48,13 +57,14 @@ impl YomitanDatabase {
             COALESCE(tt.tags,  '')  AS term_tags,
             d.title                 AS dict_title
         FROM yomitan.terms              t
+        JOIN yomitan.view_terms_term_rank tr ON tr.term = t.term AND tr.reading = t.reading
         JOIN yomitan.glossaries         g  ON g.id  = t.glossary_id
         JOIN yomitan.dictionaries       d  ON d.id  = t.dict_id
         LEFT JOIN yomitan.def_tag_sets  dt ON dt.id = t.def_tags_id
         LEFT JOIN yomitan.rule_sets     r  ON r.id  = t.rules_id
         LEFT JOIN yomitan.term_tag_sets tt ON tt.id = t.term_tags_id
-        WHERE LOWER(t.term) GLOB ?1 {} t.reading GLOB ?2
-        ORDER BY t.score DESC
+        WHERE t.term_norm GLOB ?1 {} t.reading GLOB ?2
+        ORDER BY tr.max_score DESC
         LIMIT ?3 OFFSET ?4
         "#,
             and_or
@@ -63,22 +73,19 @@ impl YomitanDatabase {
         let conn = self.db.conn.lock().unwrap();
 
         let mut stmt = conn.prepare(&sql)?;
-        let rows = stmt.query_map(
-            params![q_term.to_ascii_lowercase(), q_reading, limit, offset],
-            |r| {
-                Ok(YomitanRow {
-                    term: r.get(0)?,
-                    reading: r.get(1)?,
-                    def_tags: r.get(2)?,
-                    rules: r.get(3)?,
-                    score: r.get(4)?,
-                    glossary_json: r.get(5)?,
-                    sequence: r.get(6)?,
-                    term_tags: r.get(7)?,
-                    dict_title: r.get(8)?,
-                })
-            },
-        )?;
+        let rows = stmt.query_map(params![q_term_norm, q_reading, limit, offset], |r| {
+            Ok(YomitanRow {
+                term: r.get(0)?,
+                reading: r.get(1)?,
+                def_tags: r.get(2)?,
+                rules: r.get(3)?,
+                score: r.get(4)?,
+                glossary_json: r.get(5)?,
+                sequence: r.get(6)?,
+                term_tags: r.get(7)?,
+                dict_title: r.get(8)?,
+            })
+        })?;
 
         let mut out = Vec::new();
         for r in rows {
