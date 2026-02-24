@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 
 import { Dialog, Portal } from "@chakra-ui/react";
+import { invoke } from "@tauri-apps/api/core";
 
 function LoadingDialog() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    setIsLoading(true);
+    invoke<boolean>("is_yomitan_setup_yet").then((is_setup) =>
+      setIsLoading(!is_setup),
+    );
   }, []);
 
   return (

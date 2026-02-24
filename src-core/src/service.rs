@@ -3,9 +3,11 @@ use std::path::{Path, PathBuf};
 use rusqlite::Connection;
 
 use crate::{
-    db::{Database, YomitanRow, YomitanWriter, YomitanZipImportProgress, YomitanZipImportResult},
+    db::{
+        Database, YOMITAN_DBFILE, YomitanRow, YomitanWriter, YomitanZipImportProgress,
+        YomitanZipImportResult,
+    },
     error::CJDicError,
-    models::Entry,
 };
 
 pub struct AppService {
@@ -15,17 +17,11 @@ pub struct AppService {
 impl AppService {
     pub fn new<P: AsRef<Path>>(db_dir: P) -> Result<Self, CJDicError> {
         let db = Database::new(db_dir)?;
-        db.init()?;
         Ok(Self { db })
     }
 
-    pub fn add_entry(&self, word: &str, definition: &str) -> Result<(), CJDicError> {
-        self.db.insert_entry(word, definition)?;
-        Ok(())
-    }
-
-    pub fn list_entries(&self) -> Result<Vec<Entry>, CJDicError> {
-        Ok(self.db.fetch_all_entries()?)
+    pub fn is_yomitan_setup_yet(&self) -> bool {
+        self.db.is_yomitan_dbfile_exists()
     }
 
     pub fn search_yomitan(
@@ -42,7 +38,7 @@ impl AppService {
     }
 
     pub fn get_yomitan_writer(&self) -> Result<YomitanWriter, CJDicError> {
-        let conn = Connection::open(self.db.dir.join("yomitan.db"))?;
+        let conn = Connection::open(self.db.dir.join(YOMITAN_DBFILE))?;
         let mut writer = YomitanWriter::new(conn)?;
         writer.create_schema()?;
         Ok(writer)

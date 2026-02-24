@@ -29,19 +29,25 @@ function SearchPage() {
     trySearch();
   }, [q]);
 
-  async function trySearch() {
+  function trySearch() {
     if (!q.trim()) {
       setEntries([]);
       return;
     }
 
+    let willRunSearch = runSearch;
+
     if (searchTimeout) {
       clearTimeout(searchTimeout);
+    } else {
+      // If new, just run immediately. No need for throttling.
+      runSearch();
+      willRunSearch = async () => {};
     }
 
     setSearchTimeout(
       setTimeout(() => {
-        runSearch();
+        willRunSearch();
       }, 250),
     );
   }

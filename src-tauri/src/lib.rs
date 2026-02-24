@@ -1,4 +1,4 @@
-use std::{fs::create_dir_all, path::Path};
+use std::fs::create_dir_all;
 
 use crate::command::*;
 use cjdic2_core::*;
@@ -15,15 +15,15 @@ pub fn run() {
             create_dir_all(&app_dir)?;
 
             // db_path is app_dir;
-            let db_dir = Path::new(r"D:\Projects\cjdic2\tmp\save-db");
+            let db_dir = app_dir.as_path();
+            // let db_dir = Path::new(r"D:\Projects\cjdic2\tmp\save-db");
             let service = AppService::new(&db_dir)?;
             app.manage(service);
 
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            add_entry,
-            list_entries,
+            is_yomitan_setup_yet,
             search_yomitan
         ])
         .build(tauri::generate_context!())
