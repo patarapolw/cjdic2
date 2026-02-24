@@ -20,8 +20,8 @@ impl AppService {
         Ok(Self { db })
     }
 
-    pub fn is_yomitan_setup_yet(&self) -> bool {
-        self.db.is_yomitan_dbfile_exists()
+    pub fn is_yomitan_setup_yet(&self) -> Result<bool, CJDicError> {
+        Ok(self.db.is_yomitan_dbfile_init()?)
     }
 
     pub fn search_yomitan(

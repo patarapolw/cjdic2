@@ -7,7 +7,7 @@ use std::{
     },
 };
 
-use anyhow::Result;
+use anyhow::{Ok, Result};
 use rusqlite::Connection;
 
 mod yomitan;
@@ -46,8 +46,17 @@ impl Database {
         })
     }
 
-    pub fn is_yomitan_dbfile_exists(&self) -> bool {
-        self.dir.join(YOMITAN_DBFILE).exists()
+    pub fn is_yomitan_dbfile_init(&self) -> Result<bool> {
+        let yomitan_db_path = self.dir.join(YOMITAN_DBFILE);
+
+        if yomitan_db_path.exists() {
+            return Ok(false);
+        }
+
+        let conn = Connection::open(yomitan_db_path)?;
+        let mut stmt = conn.prepare("SELECT 1 FROM dictionaries")?;
+
+        Ok(stmt.exists([])?)
     }
 
     pub fn yomitan(&self) -> Result<yomitan::YomitanDatabase> {

@@ -2,8 +2,8 @@
 use cjdic2_core::{AppService, YomitanRow};
 
 #[tauri::command]
-pub fn is_yomitan_setup_yet(state: tauri::State<AppService>) -> bool {
-    state.is_yomitan_setup_yet()
+pub fn is_yomitan_setup_yet(state: tauri::State<AppService>) -> Result<bool, String> {
+    state.is_yomitan_setup_yet().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
