@@ -63,6 +63,8 @@ function StructuredContent({
   node: any;
   onTermClicked: (t: string) => void;
 }): any {
+  if (!node) return null;
+
   if (typeof node === "string") {
     return node;
   }
@@ -70,25 +72,28 @@ function StructuredContent({
   if (Array.isArray(node)) {
     return (
       <>
-        {...node.map((n) => (
-          <StructuredContent node={n} onTermClicked={onTermClicked} />
+        {...node.map((n, i) => (
+          <StructuredContent key={i} node={n} onTermClicked={onTermClicked} />
         ))}
       </>
     );
   }
 
+  const tag = "tag" in node ? node.tag : null;
+  if (!tag) return null;
+
   // Line break
-  if ("tag" in node && node.tag === "br") {
+  if (tag === "br") {
     return <br />;
   }
 
   // Image
-  if ("tag" in node && node.tag === "img") {
+  if (tag === "img") {
     return <GlossaryImage {...node} />;
   }
 
   // Link
-  if ("tag" in node && node.tag === "a") {
+  if (tag === "a") {
     const link = node as any;
     const { href, content } = link;
 
@@ -101,9 +106,9 @@ function StructuredContent({
         onClick={(ev) => {
           if (isWebLink) return true;
           ev.preventDefault();
-          const querySearch = "?query=";
-          if (href.startsWith(querySearch)) {
-            onTermClicked(href.substring(querySearch.length));
+          const [, t] = href.split("query=");
+          if (t) {
+            onTermClicked(t.split("&")[0]);
           }
           return false;
         }}
@@ -116,15 +121,11 @@ function StructuredContent({
   }
 
   // Block/container elements (span, div, ol, ul, li, ruby, table, etc.)
-  if ("tag" in node) {
-    const block = node as any;
+  const block = node as any;
 
-    return h(
-      block.tag,
-      { style: block.style, title: block.title, open: block.open },
-      StructuredContent({ node: block.content, onTermClicked }),
-    );
-  }
-
-  return null;
+  return h(
+    tag,
+    { style: block.style, title: block.title, open: block.open },
+    StructuredContent({ node: block.content, onTermClicked }),
+  );
 }

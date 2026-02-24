@@ -167,9 +167,9 @@ function App() {
                     <Card.Body>
                       <div
                         style={{
-                          gap: "1em",
                           display: "flex",
                           flexDirection: "column",
+                          whiteSpace: "pre-wrap",
                         }}
                       >
                         {JSON.parse(glossary_json).map((g: any) => (

@@ -64,7 +64,7 @@ impl YomitanDatabase {
         LEFT JOIN yomitan.rule_sets     r  ON r.id  = t.rules_id
         LEFT JOIN yomitan.term_tag_sets tt ON tt.id = t.term_tags_id
         WHERE t.term_norm GLOB ?1 {} t.reading GLOB ?2
-        ORDER BY tr.max_score DESC
+        ORDER BY tr.max_score DESC, d.sort_order DESC
         LIMIT ?3 OFFSET ?4
         "#,
             and_or

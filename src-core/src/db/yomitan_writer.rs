@@ -126,10 +126,10 @@ impl YomitanWriter {
 
         self.conn.execute_batch(
             "
+            CREATE INDEX IF NOT EXISTS dictionaries_sort_order ON dctionaries (sort_order DESC);
             CREATE INDEX IF NOT EXISTS dictionaries_lang ON dictionaries (lang);
 
             CREATE INDEX IF NOT EXISTS terms_dict_id ON terms (dict_id);
-            CREATE INDEX IF NOT EXISTS terms_term_LOWER ON terms (LOWER(term));
             CREATE INDEX IF NOT EXISTS terms_reading ON terms (reading);
             CREATE INDEX IF NOT EXISTS terms_term_reading_score ON terms(term, reading, score DESC);
 
