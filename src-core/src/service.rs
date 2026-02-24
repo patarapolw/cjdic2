@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use rusqlite::Connection;
 
 use crate::{
-    db::{Database, YomitanRow, YomitanWriter, YomitanZipImportResult},
+    db::{Database, YomitanRow, YomitanWriter, YomitanZipImportProgress, YomitanZipImportResult},
     error::CJDicError,
     models::Entry,
 };
@@ -48,12 +48,16 @@ impl AppService {
         Ok(writer)
     }
 
-    pub fn import_yomitan_zip_file(
+    pub fn import_yomitan_zip_file<Callback>(
         writer: &mut YomitanWriter,
         zip_file: PathBuf,
         lang: &str,
-    ) -> Result<YomitanZipImportResult, CJDicError> {
-        Ok(writer.import_dictionary_zip_file(zip_file, lang)?)
+        progress_callback: Callback,
+    ) -> Result<YomitanZipImportResult, CJDicError>
+    where
+        Callback: Fn(YomitanZipImportProgress),
+    {
+        Ok(writer.import_dictionary_zip_file(zip_file, lang, progress_callback)?)
     }
 
     pub fn remove_yomitan_dictionary(

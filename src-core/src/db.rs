@@ -16,7 +16,7 @@ mod yomitan;
 pub use yomitan::YomitanRow;
 
 mod yomitan_writer;
-pub use yomitan_writer::{YomitanWriter, YomitanZipImportResult};
+pub use yomitan_writer::{YomitanWriter, YomitanZipImportProgress, YomitanZipImportResult};
 
 #[derive(Clone)]
 pub(crate) struct Database {

@@ -20,6 +20,14 @@ pub(super) fn normalize_term(s: &str) -> String {
 }
 
 #[derive(Serialize, Debug)]
+pub struct YomitanZipImportProgress {
+    pub message: String,
+    pub current: u32,
+    pub total: u32,
+    pub steps: u64,
+}
+
+#[derive(Serialize, Debug)]
 pub struct YomitanZipImportResult {
     pub exists: bool,
     pub load: bool,
@@ -171,7 +179,7 @@ impl YomitanWriter {
             WHEN NEW.score > 0
             -- This automatically excludes NULL (since NULL > 0 is false)
             BEGIN
-                INSERT INTO term_rank (term, reading, max_score)
+                INSERT INTO view_terms_term_rank (term, reading, max_score)
                 VALUES (NEW.term, NEW.reading, NEW.score)
                 ON CONFLICT(term, reading)
                 DO UPDATE SET max_score =
@@ -229,11 +237,15 @@ impl YomitanWriter {
         Ok(())
     }
 
-    pub fn import_dictionary_zip_file(
+    pub fn import_dictionary_zip_file<Callback>(
         &mut self,
         zip_file: PathBuf,
         lang: &str,
-    ) -> anyhow::Result<YomitanZipImportResult, CJDicError> {
+        progress_callback: Callback,
+    ) -> anyhow::Result<YomitanZipImportResult, CJDicError>
+    where
+        Callback: Fn(YomitanZipImportProgress),
+    {
         self.create_schema()?; // < 1 ms
 
         let start_time = Instant::now();
@@ -259,6 +271,14 @@ impl YomitanWriter {
                 });
             }
         };
+
+        let mut steps: u64 = 0;
+        progress_callback(YomitanZipImportProgress {
+            message: format!("Extracted {}", zip_file.display()),
+            current: 0,
+            total: 0,
+            steps,
+        });
 
         fn remove_timestamp(s: &str) -> String {
             if let Some(pos) = s.rfind('[') {
@@ -339,6 +359,26 @@ impl YomitanWriter {
         let mut term_tags_cache: HashMap<String, i64> = HashMap::new();
         let mut rules_cache: HashMap<String, i64> = HashMap::new();
 
+        let mut n_bank: u32 = 0;
+
+        for filename in archive.file_names() {
+            let starts_with = "term_bank_";
+
+            if filename.starts_with(starts_with) {
+                let text = filename.to_string();
+                let start_idx = starts_with.len();
+
+                if let Some(stop_idx) = text[start_idx..].find(".") {
+                    let sub = &text[start_idx..(start_idx + stop_idx)];
+                    if let Some(i_bank) = sub.parse::<u32>().ok() {
+                        if i_bank > n_bank {
+                            n_bank = i_bank;
+                        }
+                    }
+                }
+            }
+        }
+
         // term banks
         let mut bank_i = 1;
         loop {
@@ -348,6 +388,15 @@ impl YomitanWriter {
                     let mut s = String::new();
                     f.read_to_string(&mut s)?;
                     let entries: Vec<Value> = serde_json::from_str(&s)?;
+
+                    steps += entries.len() as u64;
+                    progress_callback(YomitanZipImportProgress {
+                        message: format!("Reading term bank {} of {}", bank_i, n_bank),
+                        current: bank_i,
+                        total: n_bank,
+                        steps,
+                    });
+
                     for e in entries {
                         let term = e.get(0).and_then(Value::as_str).unwrap_or("");
                         let reading = e.get(1).and_then(Value::as_str).unwrap_or("");
@@ -441,6 +490,14 @@ impl YomitanWriter {
             }
         }
 
+        steps += 1;
+        progress_callback(YomitanZipImportProgress {
+            message: format!("Reading term meta bank"),
+            current: 0,
+            total: 0,
+            steps,
+        });
+
         // term_meta banks
         let mut meta_i = 1;
         loop {
@@ -469,6 +526,14 @@ impl YomitanWriter {
                 Err(_) => break,
             }
         }
+
+        steps += 1;
+        progress_callback(YomitanZipImportProgress {
+            message: format!("Reading tag bank"),
+            current: 0,
+            total: 0,
+            steps,
+        });
 
         // tag banks
         let mut tag_i = 1;
