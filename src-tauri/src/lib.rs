@@ -13,6 +13,7 @@ pub fn run() {
         .setup(|app| {
             let app_dir = app.path().app_config_dir()?;
             create_dir_all(&app_dir)?;
+            // println!("{:?}", app_dir);
 
             // db_path is app_dir;
             let db_dir = app_dir.as_path();
@@ -22,10 +23,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
-            is_yomitan_setup_yet,
-            search_yomitan
-        ])
+        .invoke_handler(tauri::generate_handler![init_yomitan, search_yomitan])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(|_app_handle, event| match event {

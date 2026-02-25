@@ -15,6 +15,9 @@ pub enum CJDicError {
     #[error("IO error: {0}")]
     IOError(#[from] std::io::Error),
 
+    #[error("File name not found")]
+    FileNameNotFound,
+
     #[error("Zip error: {0}")]
     ZipError(#[from] ZipError),
 

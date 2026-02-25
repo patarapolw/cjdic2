@@ -1,4 +1,4 @@
-import { CompositionEventHandler, useEffect, useState } from "react";
+import { CompositionEventHandler, useEffect, useRef, useState } from "react";
 
 import { Box, Button, Card, Group, Input, Stack } from "@chakra-ui/react";
 import { invoke } from "@tauri-apps/api/core";
@@ -22,6 +22,7 @@ function SearchPage() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [searchTimeout, setSearchTimeout] = useState(0);
   const [furigana, setFurigana] = useState("");
+  const nSearch = useRef(0);
 
   const lang = "ja-JP";
 
@@ -35,19 +36,18 @@ function SearchPage() {
       return;
     }
 
-    let willRunSearch = runSearch;
-
     if (searchTimeout) {
       clearTimeout(searchTimeout);
-    } else {
+    } else if (nSearch.current === 0) {
       // If new, just run immediately. No need for throttling.
       runSearch();
-      willRunSearch = async () => {};
     }
+
+    nSearch.current += 1;
 
     setSearchTimeout(
       setTimeout(() => {
-        willRunSearch();
+        if (nSearch.current > 1) runSearch();
       }, 250),
     );
   }

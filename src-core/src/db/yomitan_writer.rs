@@ -19,7 +19,7 @@ pub(super) fn normalize_term(s: &str) -> String {
         .collect()
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct YomitanZipImportProgress {
     pub message: String,
     pub current: u32,
@@ -69,6 +69,7 @@ impl YomitanWriter {
                 description  TEXT,
                 sort_order   INTEGER NOT NULL DEFAULT 0,
                 installed_at TEXT    NOT NULL DEFAULT (datetime('now')),
+                bundle_name  TEXT,                  -- custom
                 lang         TEXT    NOT NULL,      -- custom
                 UNIQUE (title, revision)
             );
@@ -126,7 +127,7 @@ impl YomitanWriter {
 
         self.conn.execute_batch(
             "
-            CREATE INDEX IF NOT EXISTS dictionaries_sort_order ON dctionaries (sort_order DESC);
+            CREATE INDEX IF NOT EXISTS dictionaries_sort_order ON dictionaries (sort_order DESC);
             CREATE INDEX IF NOT EXISTS dictionaries_lang ON dictionaries (lang);
 
             CREATE INDEX IF NOT EXISTS terms_dict_id ON terms (dict_id);
@@ -246,7 +247,13 @@ impl YomitanWriter {
     where
         Callback: Fn(YomitanZipImportProgress),
     {
-        self.create_schema()?; // < 1 ms
+        let bundle_name = if let Some(fo) = zip_file.file_name()
+            && let Some(f) = fo.to_str()
+        {
+            f
+        } else {
+            return Err(CJDicError::FileNameNotFound);
+        };
 
         let start_time = Instant::now();
         self.conn.execute_batch("PRAGMA foreign_keys = off")?;
@@ -274,7 +281,7 @@ impl YomitanWriter {
 
         let mut steps: u64 = 0;
         progress_callback(YomitanZipImportProgress {
-            message: format!("Extracted {}", zip_file.display()),
+            message: format!("Opening {}", bundle_name),
             current: 0,
             total: 0,
             steps,
@@ -327,7 +334,9 @@ impl YomitanWriter {
 
         let tx = self.conn.transaction()?;
         tx.execute(
-            "INSERT INTO dictionaries (title, revision, author, url, description, lang) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            "INSERT INTO dictionaries
+            (title, revision, author, url, description, lang, bundle_name) VALUES
+            ( ?1,      ?2,      ?3,   ?4,      ?5,       ?6,     ?7)",
             params![
                 title,
                 revision,
@@ -335,6 +344,7 @@ impl YomitanWriter {
                 index_file.get("url").and_then(Value::as_str),
                 index_file.get("description").and_then(Value::as_str),
                 lang,
+                bundle_name,
             ],
         )?;
 
@@ -391,7 +401,7 @@ impl YomitanWriter {
 
                     steps += entries.len() as u64;
                     progress_callback(YomitanZipImportProgress {
-                        message: format!("Reading term bank {} of {}", bank_i, n_bank),
+                        message: format!("Reading term banks"),
                         current: bank_i,
                         total: n_bank,
                         steps,
@@ -492,7 +502,7 @@ impl YomitanWriter {
 
         steps += 1;
         progress_callback(YomitanZipImportProgress {
-            message: format!("Reading term meta bank"),
+            message: format!("Reading term meta banks"),
             current: 0,
             total: 0,
             steps,
@@ -529,7 +539,7 @@ impl YomitanWriter {
 
         steps += 1;
         progress_callback(YomitanZipImportProgress {
-            message: format!("Reading tag bank"),
+            message: format!("Reading tag banks"),
             current: 0,
             total: 0,
             steps,
