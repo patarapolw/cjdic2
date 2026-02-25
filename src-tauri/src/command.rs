@@ -10,7 +10,10 @@ pub async fn init_yomitan(
     let zip_dir = app
         .path()
         .resolve("resources/yomitan", BaseDirectory::Resource)
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            eprintln!("{:?}", e);
+            e.to_string()
+        })?;
     // println!("{:?}", zip_dir.as_path());
 
     state
@@ -24,7 +27,10 @@ pub async fn init_yomitan(
                 app.emit("yomitan-import-progress", r).unwrap();
             },
         )
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            eprintln!("{:?}", e);
+            e.to_string()
+        })?;
 
     Ok(())
 }
@@ -39,5 +45,8 @@ pub async fn search_yomitan(
 ) -> Result<Vec<YomitanRow>, String> {
     state
         .search_yomitan(q_term, q_reading, limit, offset)
-        .map_err(|e| e.to_string())
+        .map_err(|e| {
+            eprintln!("{:?}", e);
+            e.to_string()
+        })
 }

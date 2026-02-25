@@ -32,3 +32,9 @@ span {
     background-color: #0f0f0f69;
   }
 }
+
+@media screen and (width < 1000px) {
+  body {
+    padding-top: 2em;
+  }
+}

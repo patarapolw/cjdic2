@@ -37,11 +37,23 @@ impl YomitanDatabase {
     ) -> Result<Vec<YomitanRow>, CJDicError> {
         let and_or = if q_term == q_reading { "OR" } else { "AND" };
 
-        let q_term_norm = if q_term.ends_with("*") {
-            normalize_term(&q_term[..q_term.len() - 1]) + "*"
-        } else {
-            normalize_term(q_term)
-        };
+        let mut new_t = String::new();
+        let mut new_seg = String::new();
+
+        for c in q_term.chars() {
+            match c {
+                '*' | '?' | '[' | ']' | '\\' => {
+                    new_t.push_str(&normalize_term(&new_seg));
+                    new_seg.clear();
+                    new_t.push(c)
+                }
+                _ => new_seg.push(c),
+            }
+        }
+
+        new_t.push_str(&normalize_term(&new_seg));
+
+        let q_term_norm = new_t;
 
         // TODO: consider using = if not GLOB string
         let sql = format!(

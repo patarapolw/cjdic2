@@ -40,7 +40,7 @@ function LoadingDialog() {
         if (payload.new_dicts.length > 0) {
           messages = [
             ...messages,
-            { message: `Loading:` },
+            { message: "Importing Yomitan zip in resources/ folder:" },
             ...payload.new_dicts.map((d) => ({ message: `- ${d}` })),
           ];
         }
@@ -48,7 +48,7 @@ function LoadingDialog() {
         if (payload.to_be_removed_dicts.length > 0) {
           messages = [
             ...messages,
-            { message: `Removing:` },
+            { message: "Removing Yomitan zip:" },
             ...payload.to_be_removed_dicts.map((d) => ({ message: `- ${d}` })),
           ];
         }
@@ -90,7 +90,7 @@ function LoadingDialog() {
                 ? messages.map((m, i) => (
                     <p key={i}>
                       {m.total
-                        ? `${m.message} (${m.current} / ${m.total})`
+                        ? `${m.message} (${m.current}/${m.total})`
                         : m.message}
                     </p>
                   ))
