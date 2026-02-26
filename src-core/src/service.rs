@@ -57,7 +57,7 @@ impl AppService {
         lang: &str,
         load_callback: LoadCallback,
         import_callback: ImportCallback,
-    ) -> Result<(), CJDicError>
+    ) -> Result<LoadYomitanZipDirResult, CJDicError>
     where
         LoadCallback: Fn(LoadYomitanZipDirResult),
         ImportCallback: Fn(YomitanZipImportProgress),
@@ -128,7 +128,7 @@ impl AppService {
 
         {
             let conn = Connection::open(self.db.dir.join(YOMITAN_DBFILE))?;
-            for z in to_be_removed_dicts.iter() {
+            for z in to_be_removed_dicts.clone().iter() {
                 conn.execute("DELETE FROM dictionaries WHERE bundle_name = ?1", [z])?;
             }
         }
@@ -137,7 +137,7 @@ impl AppService {
             let conn = Connection::open(self.db.dir.join(YOMITAN_DBFILE))?;
             let mut writer = YomitanWriter::new(conn)?;
 
-            for z in new_dicts.iter() {
+            for z in new_dicts.clone().iter() {
                 Self::import_yomitan_zip_file(
                     &mut writer,
                     zip_dir.join(z),
@@ -147,7 +147,10 @@ impl AppService {
             }
         }
 
-        Ok(())
+        Ok(LoadYomitanZipDirResult {
+            new_dicts,
+            to_be_removed_dicts,
+        })
     }
 
     pub fn import_yomitan_zip_file<Callback>(
