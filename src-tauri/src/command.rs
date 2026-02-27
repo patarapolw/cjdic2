@@ -20,16 +20,11 @@ pub async fn init_yomitan(
             e.to_string()
         })?;
 
-    let config = app.config();
-    println!("{:#?}", app.asset_resolver());
-    if let Some(r) = &config.bundle.resources {
-        println!("{:?}", r);
-    }
-
     // Embedded files cannot be read with std fs directly, not to mention read_dir
     // It need to be copied with app.fs().read(...) one-by-one, and no read_dir here
     // @link https://v2.tauri.app/plugin/file-system/
     // app.config().bundle.resources don't seem to resolve **/*
+    // utils::resources::ResourcePaths::new(&["pattern*".to_string()], true); didn't work correctly in Android
     #[cfg(target_os = "android")]
     let zip_dir = {
         let filename = "PixivLight_2026-02-24.zip";
