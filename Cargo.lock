@@ -511,6 +511,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "cjdic2-core",
+ "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-fs",
@@ -524,6 +525,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "blake3",
+ "log",
  "rusqlite",
  "serde",
  "serde_json",

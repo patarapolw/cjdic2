@@ -2,3 +2,5 @@
 # *.json.zip from https://github.com/scriptin/jmdict-simplified/releases
 # TODO: jmdict.db build script
 jmdict.db
+
+manifest.json

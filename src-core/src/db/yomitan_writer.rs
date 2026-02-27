@@ -1,9 +1,14 @@
-use anyhow::Context;
 use blake3::hash;
 use rusqlite::{Connection, Result, Transaction, params};
 use serde::Serialize;
 use serde_json::Value;
-use std::{collections::HashMap, fs::File, io::Read, path::PathBuf, time::Instant};
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    io::{Cursor, Read},
+    path::{Path, PathBuf},
+    time::Instant,
+};
 use zip::ZipArchive;
 
 use crate::CJDicError;
@@ -17,6 +22,21 @@ pub(super) fn normalize_term(s: &str) -> String {
         .filter(|c| c.is_alphabetic())
         .flat_map(|c| c.to_lowercase())
         .collect()
+}
+
+pub trait ZipSource {
+    fn file_name(&self) -> &str;
+    fn bytes(&self) -> std::io::Result<Cow<'_, [u8]>>;
+}
+
+impl ZipSource for PathBuf {
+    fn file_name(&self) -> &str {
+        Path::file_name(self).and_then(|n| n.to_str()).unwrap_or("")
+    }
+
+    fn bytes(&self) -> std::io::Result<Cow<'_, [u8]>> {
+        std::fs::read(self).map(Cow::Owned)
+    }
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -238,29 +258,23 @@ impl YomitanWriter {
         Ok(())
     }
 
-    pub fn import_dictionary_zip_file<Callback>(
+    pub fn import_dictionary_zip_file<Z, Callback>(
         &mut self,
-        zip_file: PathBuf,
+        zip_file: &Z,
         lang: &str,
         progress_callback: Callback,
     ) -> anyhow::Result<YomitanZipImportResult, CJDicError>
     where
+        Z: ZipSource,
         Callback: Fn(YomitanZipImportProgress),
     {
-        let bundle_name = if let Some(fo) = zip_file.file_name()
-            && let Some(f) = fo.to_str()
-        {
-            f
-        } else {
-            return Err(CJDicError::FileNameNotFound);
-        };
+        let bundle_name = zip_file.file_name();
 
         let start_time = Instant::now();
         self.conn.execute_batch("PRAGMA foreign_keys = off")?;
 
-        let f =
-            File::open(&zip_file).with_context(|| format!("opening zip {}", zip_file.display()))?;
-        let mut archive = ZipArchive::new(f).with_context(|| "reading zip archive")?;
+        let cursor = Cursor::new(zip_file.bytes()?);
+        let mut archive = ZipArchive::new(cursor)?;
 
         let index_file = match archive.by_name("index.json") {
             Ok(mut f) => {
@@ -575,8 +589,8 @@ impl YomitanWriter {
         tx.commit()?;
 
         println!(
-            "Importing {:?} takes {:.2?}",
-            zip_file,
+            "Importing {} takes {:.2?}",
+            zip_file.file_name(),
             start_time.elapsed()
         );
 

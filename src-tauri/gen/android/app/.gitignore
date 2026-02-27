@@ -5,4 +5,5 @@
 /proguard-tauri.pro
 /tauri.properties
 
-/src/main/assets/resources/**/*.zip
+/src/main/assets/**/*.zip
+/src/main/assets/**/manifest.json

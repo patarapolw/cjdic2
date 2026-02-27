@@ -1,13 +1,13 @@
 use std::{
-    collections::HashSet,
-    fs::read_dir,
-    path::{Path, PathBuf},
+    collections::{HashMap, HashSet},
+    path::Path,
 };
 
 use rusqlite::Connection;
 use serde::Serialize;
 
 use crate::{
+    ZipSource,
     db::{
         Database, YOMITAN_DBFILE, YomitanRow, YomitanWriter, YomitanZipImportProgress,
         YomitanZipImportResult,
@@ -51,28 +51,22 @@ impl AppService {
         Ok(writer)
     }
 
-    pub fn load_yomitan_zip_dir<LoadCallback, ImportCallback>(
+    pub fn load_yomitan_zip_dir<Z, LoadCallback, ImportCallback>(
         &self,
-        zip_dir: PathBuf,
+        zip_dir: Vec<Z>,
         lang: &str,
         load_callback: LoadCallback,
         import_callback: ImportCallback,
     ) -> Result<LoadYomitanZipDirResult, CJDicError>
     where
+        Z: ZipSource,
         LoadCallback: Fn(LoadYomitanZipDirResult),
         ImportCallback: Fn(YomitanZipImportProgress),
     {
-        let mut dir_zip_list: HashSet<String> = HashSet::new();
+        let mut dir_zip_map: HashMap<String, Z> = HashMap::new();
 
-        for entry in read_dir(&zip_dir)? {
-            let e = entry?;
-            let p = e.path();
-
-            if p.extension().and_then(|s| s.to_str()) == Some("zip")
-                && let Some(f) = e.file_name().to_str()
-            {
-                dir_zip_list.insert(f.to_string());
-            }
+        for entry in zip_dir {
+            dir_zip_map.insert(entry.file_name().to_string(), entry);
         }
 
         {
@@ -96,14 +90,14 @@ impl AppService {
                 db_zip_list.insert(b_name);
             }
 
-            for z in dir_zip_list.iter() {
-                if !db_zip_list.contains(z) {
+            for z in dir_zip_map.keys() {
+                if !db_zip_list.contains(&z.to_string()) {
                     new_dicts.push(z.to_string());
                 }
             }
 
             for z in db_zip_list.iter() {
-                if !dir_zip_list.contains(z) {
+                if !dir_zip_map.contains_key(z) {
                     to_be_removed_dicts.push(z.to_string());
                 }
             }
@@ -138,12 +132,9 @@ impl AppService {
             let mut writer = YomitanWriter::new(conn)?;
 
             for z in new_dicts.clone().iter() {
-                Self::import_yomitan_zip_file(
-                    &mut writer,
-                    zip_dir.join(z),
-                    lang,
-                    &import_callback,
-                )?;
+                if let Some(zip_file) = dir_zip_map.get(z) {
+                    Self::import_yomitan_zip_file(&mut writer, zip_file, lang, &import_callback)?;
+                }
             }
         }
 
@@ -153,13 +144,14 @@ impl AppService {
         })
     }
 
-    pub fn import_yomitan_zip_file<Callback>(
+    pub fn import_yomitan_zip_file<Z, Callback>(
         writer: &mut YomitanWriter,
-        zip_file: PathBuf,
+        zip_file: &Z,
         lang: &str,
         progress_callback: Callback,
     ) -> Result<YomitanZipImportResult, CJDicError>
     where
+        Z: ZipSource,
         Callback: Fn(YomitanZipImportProgress),
     {
         Ok(writer.import_dictionary_zip_file(zip_file, lang, progress_callback)?)

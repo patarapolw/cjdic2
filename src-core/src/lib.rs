@@ -2,7 +2,7 @@ mod db;
 mod error;
 mod service;
 
-pub use db::{YomitanRow, YomitanZipImportProgress, YomitanZipImportResult};
+pub use db::{YomitanRow, YomitanZipImportProgress, YomitanZipImportResult, ZipSource};
 pub use error::CJDicError;
 pub use service::AppService;
 

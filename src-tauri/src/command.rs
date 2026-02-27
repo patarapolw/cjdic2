@@ -1,72 +1,74 @@
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-use cjdic2_core::{AppService, YomitanRow};
-use tauri::{AppHandle, Emitter, Manager};
-#[cfg(target_os = "android")]
+use std::{borrow::Cow, path::PathBuf};
+
+use cjdic2_core::{AppService, CJDicError, YomitanRow, ZipSource};
+use tauri::{AppHandle, Emitter, Manager, Runtime, path::BaseDirectory};
 use tauri_plugin_fs::FsExt;
+
+pub struct BundledZip<R: Runtime> {
+    pub name: String,
+    pub path: PathBuf, // resolved asset://localhost/... path on Android
+    pub app: AppHandle<R>,
+}
+
+impl<R: Runtime> BundledZip<R> {
+    pub fn new(app: AppHandle<R>, relative_path: &str) -> Result<Self, tauri::Error> {
+        let name = relative_path
+            .split('/')
+            .last()
+            .unwrap_or(relative_path)
+            .to_string();
+
+        let path = app.path().resolve(relative_path, BaseDirectory::Resource)?;
+
+        Ok(Self { name, path, app })
+    }
+}
+
+impl<R: Runtime> ZipSource for BundledZip<R> {
+    fn file_name(&self) -> &str {
+        &self.name
+    }
+
+    fn bytes(&self) -> std::io::Result<Cow<'_, [u8]>> {
+        self.app
+            .fs()
+            .read(&self.path) // PathBuf implements Into<FilePath>
+            .map(Cow::Owned)
+    }
+}
 
 #[tauri::command]
 pub async fn init_yomitan(
     app: AppHandle,
     state: tauri::State<'_, AppService>,
-) -> Result<(), String> {
+) -> Result<(), CJDicError> {
     let folder_name = "resources/yomitan";
 
-    // 1. Resolve the internal Asset URI
     let zip_dir = app
         .path()
         .resolve(folder_name, tauri::path::BaseDirectory::Resource)
-        .map_err(|e| {
-            eprintln!("{:?}", e);
-            e.to_string()
-        })?;
+        .map_err(|e| CJDicError::AnyhowError(e.to_string()))?;
 
-    // Embedded files cannot be read with std fs directly, not to mention read_dir
-    // It need to be copied with app.fs().read(...) one-by-one, and no read_dir here
-    // @link https://v2.tauri.app/plugin/file-system/
-    // app.config().bundle.resources don't seem to resolve **/*
-    // utils::resources::ResourcePaths::new(&["pattern*".to_string()], true); didn't work correctly in Android
-    #[cfg(target_os = "android")]
-    let zip_dir = {
-        let filename = "PixivLight_2026-02-24.zip";
+    // Manifest is needed, as Android bundled fs can't read_dir
+    let files: Vec<String> =
+        serde_json::from_str(&app.fs().read_to_string(zip_dir.join("manifest.json"))?)?;
 
-        // 2. Define the physical destination in AppData
-        let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-        let app_data_path = app_data_dir.join(filename);
+    let zip_files = files
+        .iter()
+        .map(|f| BundledZip::new(app.clone(), &format!("{folder_name}/{f}")))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| CJDicError::AnyhowError(e.to_string()))?;
 
-        if !app_data_path.exists() {
-            // 3. IMPORTANT: Use app.fs().read() to read from the APK asset
-            // std::fs::read will fail with "os error 2" on Android
-            let data = app
-                .fs()
-                .read(&zip_dir.join(filename))
-                .map_err(|e| format!("Failed to read asset from APK: {}", e))?;
-
-            // 4. Use std::fs to write to a real physical path in AppData
-            if let Some(parent) = app_data_path.parent() {
-                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-            }
-            std::fs::write(&app_data_path, data)
-                .map_err(|e| format!("Failed to write to AppData: {}", e))?;
-        }
-
-        app_data_dir
-    };
-
-    let r = state
-        .load_yomitan_zip_dir(
-            zip_dir,
-            "ja",
-            |r| {
-                app.emit("load-yomitan-dir", r).unwrap();
-            },
-            |r| {
-                app.emit("yomitan-import-progress", r).unwrap();
-            },
-        )
-        .map_err(|e| {
-            eprintln!("{:?}", e);
-            e.to_string()
-        })?;
+    let r = state.load_yomitan_zip_dir(
+        zip_files,
+        "ja",
+        |r| {
+            app.emit("load-yomitan-dir", r).unwrap();
+        },
+        |r| {
+            app.emit("yomitan-import-progress", r).unwrap();
+        },
+    )?;
 
     if r.new_dicts.len() + r.to_be_removed_dicts.len() > 0 {
         app.request_restart();
@@ -82,11 +84,6 @@ pub async fn search_yomitan(
     limit: u32,
     offset: u32,
     state: tauri::State<'_, AppService>,
-) -> Result<Vec<YomitanRow>, String> {
-    state
-        .search_yomitan(q_term, q_reading, limit, offset)
-        .map_err(|e| {
-            eprintln!("{:?}", e);
-            e.to_string()
-        })
+) -> Result<Vec<YomitanRow>, CJDicError> {
+    state.search_yomitan(q_term, q_reading, limit, offset)
 }

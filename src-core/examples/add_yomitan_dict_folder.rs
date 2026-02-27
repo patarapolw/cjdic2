@@ -29,7 +29,7 @@ fn main() -> Result<(), anyhow::Error> {
             println!("zip_file: {:?}", p);
             println!(
                 "{:?}",
-                AppService::import_yomitan_zip_file(&mut writer, p, "ja", |progress| {
+                AppService::import_yomitan_zip_file(&mut writer, &p, "ja", |progress| {
                     println!("{:?}", progress);
                 })?,
             );

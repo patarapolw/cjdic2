@@ -24,3 +24,4 @@ cjdic2-core = { path = "../src-core" }
 tauri-plugin-http = "2"
 anyhow = "1.0.102"
 tauri-plugin-fs = "2"
+serde_json = "1.0.149"
