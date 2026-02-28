@@ -7,8 +7,10 @@ import SearchPage from "./pages/SearchPage";
 function App() {
   return (
     <Provider>
-      <SearchPage />
-      <LoadingDialog />
+      <>
+        <SearchPage />
+        <LoadingDialog />
+      </>
     </Provider>
   );
 }

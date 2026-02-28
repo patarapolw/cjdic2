@@ -1,4 +1,10 @@
-import { CompositionEventHandler, useEffect, useRef, useState } from "react";
+import {
+  CompositionEventHandler,
+  UIEventHandler,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { toHiragana } from "wanakana";
 
 import {
@@ -65,7 +71,7 @@ function SearchPage() {
     );
   }
 
-  async function runSearch() {
+  async function runSearch(isNew = true) {
     const ender = /\p{Z}$/u.test(q) ? "" : "*";
 
     const re = /\<(.+?)\>\[(.+?)\]/g;
@@ -73,34 +79,55 @@ function SearchPage() {
     let qTerm = "";
     let qReading = "";
 
-    q.trim()
-      .split(re)
-      .map((s, i) => {
-        switch (i % 3) {
-          case 1:
-            qTerm += s;
-            break;
-          case 2:
-            qReading += s;
-            break;
-          default:
-            qTerm += s;
-            qReading += s;
-        }
-      });
+    let norm_q = q.trim();
+    if (isAutoKana) {
+      norm_q = norm_q.replace(/n$/i, "ん").replace(/[a-z]$/i, "");
+    }
+
+    norm_q.split(re).map((s, i) => {
+      switch (i % 3) {
+        case 1:
+          qTerm += s;
+          break;
+        case 2:
+          qReading += s;
+          break;
+        default:
+          qTerm += s;
+          qReading += s;
+      }
+    });
 
     qTerm += ender;
     qReading += ender;
 
-    setEntries(
-      await invoke("search_yomitan", {
-        qTerm,
-        qReading,
-        limit: 10,
-        offset: 0,
-      }),
-    );
+    const result = await invoke<Entry[]>("search_yomitan", {
+      qTerm,
+      qReading,
+      limit: 10,
+      offset: isNew ? 0 : entries.length,
+    });
+
+    if (isNew) {
+      setEntries(result);
+    } else {
+      setEntries([...entries, ...result]);
+    }
   }
+
+  const onEntriesScrollEnd: UIEventHandler = async ({ target }) => {
+    if (!(target instanceof HTMLElement)) return;
+    const { scrollHeight, scrollTop } = target;
+
+    if (scrollHeight - 20 > scrollTop + target.getBoundingClientRect().height)
+      return;
+
+    await runSearch(false);
+
+    setTimeout(() => {
+      target.scrollTop = scrollTop + 100;
+    }, 100);
+  };
 
   function onSearchboxChange(q: string) {
     if (isAutoKana) {
@@ -167,7 +194,16 @@ function SearchPage() {
   ) : null;
 
   return (
-    <Stack maxW={"1000px"} margin={"0.5em auto"}>
+    <Stack
+      style={{
+        margin: "0.5em auto",
+        maxWidth: "1000px",
+        maxHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        overflowY: "hidden",
+      }}
+    >
       <form
         lang={lang}
         onSubmit={(e) => {
@@ -201,18 +237,20 @@ function SearchPage() {
           </Switch.Root>
         </div>
       </form>
-      <Box as={"ol"} listStyleType={"number"} style={{ margin: "1em" }}>
+      <Box
+        as={"ol"}
+        listStyleType={"number"}
+        style={{ overflowY: "scroll", scrollbarWidth: "none" }}
+        onScrollEnd={onEntriesScrollEnd}
+      >
         {entries.map(
           ({ term, reading, dict_title, glossary_json, ...it }, i) => (
-            <li key={i} lang={lang}>
-              <details>
-                <summary>
-                  {term}
-                  {reading ? ` (${reading})` : ""} 【{dict_title}】
-                </summary>
-
+            <li key={i} lang={lang} style={{ marginLeft: "1.5em" }}>
+              <div>
                 <Card.Root>
                   <Card.Header>
+                    {term}
+                    {reading ? ` (${reading})` : ""} 【{dict_title}】
                     {JSON.stringify(it, (_, v) => v || undefined)}
                   </Card.Header>
                   <Card.Body>
@@ -223,8 +261,9 @@ function SearchPage() {
                         whiteSpace: "pre-wrap",
                       }}
                     >
-                      {JSON.parse(glossary_json).map((g: any) => (
+                      {JSON.parse(glossary_json).map((g: any, i: number) => (
                         <Glossary
+                          key={i}
                           glossary={g}
                           onTermClicked={(t) => setQ(t + " ")}
                         />
@@ -232,7 +271,7 @@ function SearchPage() {
                     </div>
                   </Card.Body>
                 </Card.Root>
-              </details>
+              </div>
             </li>
           ),
         )}

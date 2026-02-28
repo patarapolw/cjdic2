@@ -2,19 +2,29 @@ import { createElement as h } from "react";
 
 export default function Glossary({
   glossary,
+  maxLength,
   onTermClicked,
 }: {
   glossary: any;
+  maxLength?: number;
   onTermClicked: (t: string) => void;
 }) {
+  function trimString(s: any) {
+    if (!maxLength) return s;
+    if (typeof s === "string") {
+      return s.substring(0, maxLength);
+    }
+    return s;
+  }
+
   // Plain string
   if (typeof glossary === "string") {
-    return glossary;
+    return trimString(glossary);
   }
 
   // GlossaryText
   if ("type" in glossary && glossary.type === "text") {
-    return glossary.text;
+    return trimString(glossary.text);
   }
 
   // GlossaryImage
@@ -26,7 +36,11 @@ export default function Glossary({
   if ("type" in glossary && glossary.type === "structured-content") {
     const sc = glossary;
     return (
-      <StructuredContent node={sc.content} onTermClicked={onTermClicked} />
+      <StructuredContent
+        node={sc.content}
+        maxLength={maxLength}
+        onTermClicked={onTermClicked}
+      />
     );
   }
 
@@ -58,22 +72,37 @@ function GlossaryImage(img: any) {
 
 function StructuredContent({
   node,
+  maxLength,
   onTermClicked,
 }: {
   node: any;
+  maxLength?: number;
   onTermClicked: (t: string) => void;
 }): any {
   if (!node) return null;
 
+  function trimString(s: any) {
+    if (!maxLength) return s;
+    if (typeof s === "string") {
+      return s.substring(0, maxLength);
+    }
+    return s;
+  }
+
   if (typeof node === "string") {
-    return node;
+    return trimString(node);
   }
 
   if (Array.isArray(node)) {
     return (
       <>
         {...node.map((n, i) => (
-          <StructuredContent key={i} node={n} onTermClicked={onTermClicked} />
+          <StructuredContent
+            key={i}
+            node={n}
+            maxLength={maxLength}
+            onTermClicked={onTermClicked}
+          />
         ))}
       </>
     );
@@ -114,7 +143,11 @@ function StructuredContent({
         }}
       >
         {content ? (
-          <StructuredContent node={content} onTermClicked={onTermClicked} />
+          <StructuredContent
+            node={content}
+            maxLength={maxLength}
+            onTermClicked={onTermClicked}
+          />
         ) : null}
       </a>
     );
@@ -126,6 +159,6 @@ function StructuredContent({
   return h(
     tag,
     { style: block.style, title: block.title, open: block.open },
-    StructuredContent({ node: block.content, onTermClicked }),
+    StructuredContent({ node: block.content, maxLength, onTermClicked }),
   );
 }
