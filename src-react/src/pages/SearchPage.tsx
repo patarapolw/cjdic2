@@ -1,6 +1,16 @@
 import { CompositionEventHandler, useEffect, useRef, useState } from "react";
+import { toHiragana } from "wanakana";
 
-import { Box, Button, Card, Group, Input, Stack } from "@chakra-ui/react";
+import {
+  Box,
+  Card,
+  CloseButton,
+  Group,
+  Input,
+  InputGroup,
+  Stack,
+  Switch,
+} from "@chakra-ui/react";
 import { invoke } from "@tauri-apps/api/core";
 
 import Glossary from "../components/Glossary";
@@ -22,7 +32,10 @@ function SearchPage() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [searchTimeout, setSearchTimeout] = useState(0);
   const [furigana, setFurigana] = useState("");
+  const [isAutoKana, set_isAutoKana] = useState(true);
+
   const nSearch = useRef(0);
+  const searchboxRef = useRef<HTMLInputElement | null>(null);
 
   const lang = "ja-JP";
 
@@ -89,6 +102,14 @@ function SearchPage() {
     );
   }
 
+  function onSearchboxChange(q: string) {
+    if (isAutoKana) {
+      q = toHiragana(q, { useObsoleteKana: true, IMEMode: true });
+    }
+
+    setQ(q);
+  }
+
   const FURIGANA_REGEX = /^[\p{scx=Hiragana}\p{scx=Katakana}]+$/u;
   const KANJI_REGEX = /([\p{sc=Han}\p{N}々〆ヵヶ]+)/u;
 
@@ -134,6 +155,17 @@ function SearchPage() {
       : k;
   }
 
+  const clearButton = q.trim() ? (
+    <CloseButton
+      size={"xs"}
+      me={-2}
+      onClick={() => {
+        setQ("");
+        searchboxRef.current ? searchboxRef.current.focus() : null;
+      }}
+    />
+  ) : null;
+
   return (
     <Stack maxW={"1000px"} margin={"0.5em auto"}>
       <form
@@ -143,18 +175,31 @@ function SearchPage() {
         }}
       >
         <Group attached w="full">
-          <Input
-            id="greet-input"
-            value={q}
-            onChange={(e) => setQ(e.currentTarget.value)}
-            onCompositionUpdate={updateFurigana}
-            onCompositionEnd={addFurigana}
-            autoComplete="off"
-            spellCheck={false}
-            placeholder="Search..."
-          />
-          <Button type="submit">Search</Button>
+          <InputGroup endElement={clearButton}>
+            <Input
+              id="greet-input"
+              ref={searchboxRef}
+              value={q}
+              onChange={(e) => onSearchboxChange(e.currentTarget.value)}
+              onCompositionUpdate={updateFurigana}
+              onCompositionEnd={addFurigana}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="Search..."
+            />
+          </InputGroup>
+          {/* <Button type="submit">Search</Button> */}
         </Group>
+        <div style={{ marginTop: "0.5em" }}>
+          <Switch.Root
+            checked={isAutoKana}
+            onCheckedChange={(d) => set_isAutoKana(d.checked)}
+          >
+            <Switch.HiddenInput />
+            <Switch.Control />
+            <Switch.Label>Auto-convert Kana</Switch.Label>
+          </Switch.Root>
+        </div>
       </form>
       <Box as={"ol"} listStyleType={"number"} style={{ margin: "1em" }}>
         {entries.map(

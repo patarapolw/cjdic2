@@ -44,6 +44,9 @@ importers:
       react-icons:
         specifier: ^5.5.0
         version: 5.5.0(react@19.2.4)
+      wanakana:
+        specifier: ^5.3.1
+        version: 5.3.1
       zustand:
         specifier: ^5.0.11
         version: 5.0.11(@types/react@19.2.14)(react@19.2.4)
@@ -1194,6 +1197,10 @@ packages:
         optional: true
       yaml:
         optional: true
+
+  wanakana@5.3.1:
+    resolution: {integrity: sha512-OSDqupzTlzl2LGyqTdhcXcl6ezMiFhcUwLBP8YKaBIbMYW1wAwDvupw2T9G9oVaKT9RmaSpyTXjxddFPUcFFIw==}
+    engines: {node: '>=12'}
 
   yallist@3.1.1:
     resolution: {integrity: sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g==}
@@ -2617,6 +2624,8 @@ snapshots:
     optionalDependencies:
       '@types/node': 24.10.13
       fsevents: 2.3.3
+
+  wanakana@5.3.1: {}
 
   yallist@3.1.1: {}
 
