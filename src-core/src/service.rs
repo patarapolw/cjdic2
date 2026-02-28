@@ -51,6 +51,13 @@ impl AppService {
         Ok(writer)
     }
 
+    pub fn cleanup_yomitan_writer(&self) -> Result<YomitanWriter, CJDicError> {
+        let conn = Connection::open(self.db.dir.join(YOMITAN_DBFILE))?;
+        let writer = YomitanWriter::new(conn)?;
+        writer.cleanup()?;
+        Ok(writer)
+    }
+
     pub fn load_yomitan_zip_dir<Z, LoadCallback, ImportCallback>(
         &self,
         zip_dir: Vec<Z>,
@@ -145,7 +152,7 @@ impl AppService {
     }
 
     pub fn import_yomitan_zip_file<Z, Callback>(
-        writer: &mut YomitanWriter,
+        writer: &mut YomitanWriter, // Reuse existing connection
         zip_file: &Z,
         lang: &str,
         progress_callback: Callback,

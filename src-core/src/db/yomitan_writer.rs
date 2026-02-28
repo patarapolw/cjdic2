@@ -73,6 +73,11 @@ impl YomitanWriter {
         Ok(Self { conn })
     }
 
+    pub fn cleanup(&self) -> Result<()> {
+        self.conn.execute_batch("VACUUM")?;
+        Ok(())
+    }
+
     pub fn create_schema(&mut self) -> Result<()> {
         self.conn.execute_batch(
         "

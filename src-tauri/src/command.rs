@@ -71,6 +71,10 @@ pub async fn init_yomitan(
     )?;
 
     if r.new_dicts.len() + r.to_be_removed_dicts.len() > 0 {
+        // Cleanup doesn't appear to help even after app restart
+        // state.cleanup_yomitan_writer()?;
+
+        // Request app restart anyway
         app.request_restart();
     }
 
