@@ -4,6 +4,9 @@
       "path": ".",
     },
     {
+      "path": "js-server",
+    },
+    {
       "path": "src-core",
     },
     {
