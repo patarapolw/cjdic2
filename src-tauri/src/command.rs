@@ -42,35 +42,48 @@ pub async fn init_yomitan(
     app: AppHandle,
     state: tauri::State<'_, AppService>,
 ) -> Result<(), CJDicError> {
-    let folder_name = "resources/yomitan";
+    let mut new_dicts: Vec<String> = vec![];
+    let mut to_be_removed_dicts: Vec<String> = vec![];
 
-    let zip_dir = app
-        .path()
-        .resolve(folder_name, tauri::path::BaseDirectory::Resource)
-        .map_err(|e| CJDicError::AnyhowError(e.to_string()))?;
+    for lang in vec!["ja"] {
+        let folder_name = format!("resources/yomitan/{lang}");
+        let folder_name = folder_name.as_str();
 
-    // Manifest is needed, as Android bundled fs can't read_dir
-    let files: Vec<String> =
-        serde_json::from_str(&app.fs().read_to_string(zip_dir.join("manifest.json"))?)?;
+        let zip_dir = app
+            .path()
+            .resolve(folder_name, tauri::path::BaseDirectory::Resource)
+            .map_err(|e| CJDicError::AnyhowError(e.to_string()))?;
 
-    let zip_files = files
-        .iter()
-        .map(|f| BundledZip::new(app.clone(), &format!("{folder_name}/{f}")))
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| CJDicError::AnyhowError(e.to_string()))?;
+        // Manifest is needed, as Android bundled fs can't read_dir
+        let files: Vec<String> =
+            serde_json::from_str(&app.fs().read_to_string(zip_dir.join("manifest.json"))?)?;
 
-    let r = state.load_yomitan_zip_dir(
-        zip_files,
-        "ja",
-        |r| {
-            app.emit("load-yomitan-dir", r).unwrap();
-        },
-        |r| {
-            app.emit("yomitan-import-progress", r).unwrap();
-        },
-    )?;
+        let zip_files = files
+            .iter()
+            .map(|f| BundledZip::new(app.clone(), &format!("{folder_name}/{f}")))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| CJDicError::AnyhowError(e.to_string()))?;
 
-    if r.new_dicts.len() + r.to_be_removed_dicts.len() > 0 {
+        if zip_files.is_empty() {
+            continue;
+        }
+
+        let mut r = state.load_yomitan_zip_dir(
+            zip_files,
+            lang,
+            |r| {
+                app.emit("load-yomitan-dir", r).unwrap();
+            },
+            |r| {
+                app.emit("yomitan-import-progress", r).unwrap();
+            },
+        )?;
+
+        new_dicts.append(&mut r.new_dicts);
+        to_be_removed_dicts.append(&mut r.to_be_removed_dicts);
+    }
+
+    if new_dicts.len() + to_be_removed_dicts.len() > 0 {
         // Cleanup doesn't appear to help even after app restart
         // state.cleanup_yomitan_writer()?;
 
