@@ -32,21 +32,24 @@ export class TagEntry {
  */
 type DictionaryTagBankV3 = DictionaryTag[];
 
+/**
+ * Information about a single tag.
+ * "minItems": 5,
+ * "maxItems": 5,
+ */
 type DictionaryTag = [
-  // "description": "Information about a single tag.",
-  // "minItems": 5,
-  // "maxItems": 5,
-
+  /** Tag name. */
   string,
-  // "description": "Tag name."
+  /** Category for the tag. */
   string,
-  // "description": "Category for the tag."
+  /** Sorting order for the tag. */
   number,
-  // "description": "Sorting order for the tag."
+  /** Notes for the tag. */
   string,
-  // "description": "Notes for the tag."
+  /**
+   * Score used to determine popularity.
+   * Negative values are more rare and positive values are more frequent.
+   * This score is also used to sort search results.
+   */
   number,
-  // "description": "Score used to determine popularity.
-  // Negative values are more rare and positive values are more frequent.
-  // This score is also used to sort search results."
 ];

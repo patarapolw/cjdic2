@@ -22,7 +22,7 @@ export class TermEntry {
   ]: DictionaryTerm) {
     return new TermEntry({
       text,
-      reading,
+      reading: reading === text ? undefined : reading || undefined,
       defTags: defTags ? defTags.split(" ") : undefined,
       rules: rules ? rules.split(" ") : undefined,
       popularity,
@@ -40,35 +40,46 @@ export class TermEntry {
  *
  * The term bank for term information. This is where dictionary readings, definitions, and such are stored.
  *
- * @see https://github.com/themoeway/yomitan/tree/master/ext/data/schemas/dictionary-term-bank-v3-schema.json
+ * @see https://github.com/yomidevs/yomitan/tree/master/ext/data/schemas/dictionary-term-bank-v3-schema.json
  */
 type DictionaryTermBankV3 = DictionaryTerm[];
 
+/**
+ * Information about a single term.
+ * "minItems": 8,
+ * "maxItems": 8,
+ */
 type DictionaryTerm = [
-  // "description": "Information about a single term.",
-  // "minItems": 8,
-  // "maxItems": 8,
+  /** The text for the term. */
+  string,
+  /** Reading of the term, or an empty string if the reading is the same as the term. */
+  string,
+  (
+    /** String of space-separated tags for the definition. An empty string is treated as no tags. */
+    string | null
+  ),
+  /**
+   * String of space-separated rule identifiers for the definition which is used to validate deinflection.
+   * An empty string should be used for words which aren't inflected.
+   */
+  string,
+  /**
+   * Score used to determine popularity.
+   * Negative values are more rare and positive values are more frequent.
+   * This score is also used to sort search results.
+   */
+  number,
 
-  string,
-  // "description": "The text for the term."
-  // "description": "Reading of the term, or an empty string if the reading is the same as the term."
-  string,
-  string | null,
-  // "description": "String of space-separated tags for the definition. An empty string is treated as no tags."
-  string,
-  // "description": "String of space-separated rule identifiers for the definition which is used to validate deinflection.
-  // An empty string should be used for words which aren't inflected."
-  number,
-  // "description": "Score used to determine popularity.
-  // Negative values are more rare and positive values are more frequent.
-  // This score is also used to sort search results."
   DictionaryDefinition,
+  /**
+   * Sequence number for the term.
+   * Terms with the same sequence number can be shown together when the "resultOutputMode" option is set to "merge".
+   *
+   * "type": "integer",
+   */
   number,
-  // "type": "integer",
-  // "description": "Sequence number for the term.
-  // Terms with the same sequence number can be shown together when the \"resultOutputMode\" option is set to \"merge\"."
+  /** String of space-separated tags for the term. An empty string is treated as no tags. */
   string,
-  // "description": "String of space-separated tags for the term. An empty string is treated as no tags."
 ];
 
 type DictionaryDefinition =
@@ -81,22 +92,26 @@ type DictionaryDefinitionObject =
   | DictionaryDefinition_structured
   | DictionaryDefinition_img;
 
+/**
+ * Deinflection of the term to an uninflected term.
+ *
+ * "minItems": 2,
+ * "maxItems": 2,
+ */
 type DictionaryDefinitionInflected = [
-  // "description": "Deinflection of the term to an uninflected term.",
-  // "minItems": 2,
-  // "maxItems": 2,
-
+  /** The uninflected term. */
   string,
-  // "description": "The uninflected term."
+  /**
+   * A chain of inflection rules that produced the inflected term.
+   * Array of single inflection rules.
+   */
   string[],
-  // "description": "A chain of inflection rules that produced the inflected term",
-  // "description": "A single inflection rule."
 ];
 
 interface DictionaryDefinition_text {
   type: "text";
+  /** Single definition for the term. */
   text: string;
-  // "description": "Single definition for the term."
 }
 
 interface DictionaryDefinition_structured {
@@ -107,39 +122,55 @@ interface DictionaryDefinition_structured {
 interface DictionaryDefinition_img {
   type: "image";
   path: string;
+  /**
+   * "type": "integer",
+   * "description": "Preferred width of the image.",
+   * "minimum": 1
+   */
   width?: number;
-  // "type": "integer",
-  // "description": "Preferred width of the image.",
-  // "minimum": 1
+  /**
+   * "type": "integer",
+   * "description": "Preferred height of the image.",
+   * "minimum": 1
+   */
   height?: number;
-  // "type": "integer",
-  // "description": "Preferred height of the image.",
-  // "minimum": 1
+  /** Hover text for the image. */
   title?: string;
-  // "description": "Hover text for the image."
+  /** Alt text for the image. */
   alt?: string;
-  // "description": "Alt text for the image."
+  /** Description of the image. */
   description?: string;
-  // "description": "Description of the image."
+  /**
+   * Whether or not the image should appear pixelated at sizes larger than the image's native resolution.
+   * @default false
+   */
   pixelated?: boolean;
-  // "description": "Whether or not the image should appear pixelated at sizes larger than the image's native resolution.",
-  // "default": false
+  /**
+   * Controls how the image is rendered. The value of this field supersedes the pixelated field.
+   * @default "auto"
+   */
   imageRendering?: "auto" | "pixelated" | "crisp-edges";
-  // "description": "Controls how the image is rendered. The value of this field supersedes the pixelated field.",
-  // "default": "auto"
+  /**
+   * Controls the appearance of the image.
+   * The "monochrome" value will mask the opaque parts of the image using the current text color.
+   * @default "auto"
+   */
   appearance?: "auto" | "monochrome";
-  // "description": "Controls the appearance of the image.
-  // The \"monochrome\" value will mask the opaque parts of the image using the current text color.",
-  // "default": "auto"
+  /**
+   * Whether or not a background color is displayed behind the image.
+   * @default true
+   */
   background?: boolean;
-  // "description": "Whether or not a background color is displayed behind the image.",
-  // "default": true
+  /**
+   * Whether or not the image is collapsed by default.
+   * @default false
+   */
   collapsed?: boolean;
-  // "description": "Whether or not the image is collapsed by default.",
-  // "default": false
+  /**
+   * Whether or not the image can be collapsed.
+   * @default true
+   */
   collapsible?: boolean;
-  // "description": "Whether or not the image can be collapsed.",
-  // "default": true
 }
 
 type StructuredContent =
@@ -168,12 +199,16 @@ interface StructuredContent_table {
   tag: "td" | "th";
   content?: StructuredContent;
   data?: StructuredContentData;
+  /**
+   * "type": "integer",
+   * "minimum": 1
+   */
   colSpan?: number;
-  // "type": "integer",
-  // "minimum": 1
+  /**
+   * "type": "integer",
+   * "minimum": 1
+   */
   rowSpan?: number;
-  // "type": "integer",
-  // "minimum": 1
   lang?: string;
 }
 
@@ -182,48 +217,65 @@ interface StructuredContent_styled_container {
   content?: StructuredContent;
   data?: StructuredContentData;
   style: StructuredContentStyle;
+  /** Hover text for the element. */
   title?: string;
-  // "description": "Hover text for the element."
+  /** Whether or not the details element is open by default. */
   open?: boolean;
-  // "description": "Whether or not the details element is open by default."
   lang?: string;
 }
 
 interface StructuredContent_img {
   tag: "img";
   data?: StructuredContentData;
+  /** Path to the image file in the archive. */
   path: string;
-  // "description": "Path to the image file in the archive."
+  /**
+   * Preferred width of the image.
+   * "minimum": 0
+   */
   width?: number;
-  // "description": "Preferred width of the image.",
-  // "minimum": 0
+  /**
+   * Preferred height of the image.
+   * "minimum": 0
+   */
   height?: number;
-  // "description": "Preferred height of the image.",
-  // "minimum": 0
+  /** Hover text for the image. */
   title?: string;
-  // "description": "Hover text for the image."
+  /** Alt text for the image. */
   alt?: string;
-  // "description": "Alt text for the image."
+  /** Description of the image. */
   description?: string;
-  // "description": "Description of the image."
+  /**
+   * Whether or not the image should appear pixelated at sizes larger than the image's native resolution.
+   * @default false
+   */
   pixelated?: boolean;
-  // "description": "Whether or not the image should appear pixelated at sizes larger than the image's native resolution.",
-  // "default": false
+  /**
+   * Controls how the image is rendered. The value of this field supersedes the pixelated field.
+   * @default "auto"
+   */
   imageRendering?: "auto" | "pixelated" | "crisp-edges";
-  // "description": "Controls how the image is rendered. The value of this field supersedes the pixelated field.",
-  // "default": "auto"
+  /**
+   * Controls the appearance of the image. The "monochrome" value will mask the opaque parts of the image using the current text color.
+   * @default "auto"
+   */
   appearance?: "auto" | "monochrome";
-  // "description": "Controls the appearance of the image. The \"monochrome\" value will mask the opaque parts of the image using the current text color.",
-  // "default": "auto"
+  /**
+   * Whether or not a background color is displayed behind the image.
+   * @default true
+   */
   background?: boolean;
-  // "description": "Whether or not a background color is displayed behind the image.",
-  // "default": true
+  /**
+   * Whether or not the image is collapsed by default.
+   * @default false
+   */
   collapsed?: boolean;
-  // "description": "Whether or not the image is collapsed by default.",
-  // "default": false
+  /**
+   * Whether or not the image can be collapsed.
+   * @default false
+   */
   collapsible?: boolean;
-  // "description": "Whether or not the image can be collapsed.",
-  // "default": false
+  /** The vertical alignment of the image. */
   verticalAlign:
     | "baseline"
     | "sub"
@@ -233,54 +285,68 @@ interface StructuredContent_img {
     | "middle"
     | "top"
     | "bottom";
-  // "description": "The vertical alignment of the image.",
+  /** Shorthand for border width, style, and color. */
   border?: string;
-  // "description": "Shorthand for border width, style, and color."
+  /** Roundness of the corners of the image's outer border edge. */
   borderRadius?: string;
-  // "description": "Roundness of the corners of the image's outer border edge."
+  /** The units for the width and height. */
   sizeUnits: "px" | "em";
-  // "description": "The units for the width and height.",
 }
 
 interface StructuredContent_link {
   tag: "a";
   content?: StructuredContent;
+  /**
+   * The URL for the link. URLs starting with a ? are treated as internal links to other dictionary content.
+   * "pattern": "^(?:https?:|\\?)[\\w\\W]*"
+   */
   href: string;
-  // "description": "The URL for the link. URLs starting with a ? are treated as internal links to other dictionary content.",
-  // "pattern": "^(?:https?:|\\?)[\\w\\W]*"
   lang?: string;
 }
 
+/** Generic data attributes that should be added to the element. */
 interface StructuredContentData {
-  // "description": "Generic data attributes that should be added to the element.",
   [key: string]: string;
 }
 
 interface StructuredContentStyle {
+  /**
+   * @default "normal"
+   */
   fontStyle?: "normal" | "italic";
-  // "default": "normal"
+  /**
+   * @default "normal"
+   */
   fontWeight?: "normal" | "bold";
-  // "default": "normal"
+  /**
+   * @default "medium"
+   */
   fontSize?: string;
-  // "default": "medium"
   color?: string;
   background?: string;
   backgroundColor?: string;
+  /**
+   * @default "none"
+   */
   textDecorationLine?:
     | "none"
     | "underline"
     | "overline"
     | "line-through"
     | StructuredContentStyle_textDecorationLine[];
-  // "default": "none"
+  /**
+   * @default "solid"
+   */
   textDecorationStyle?: "solid" | "double" | "dotted" | "dashed" | "wavy";
-  // "default": "solid"
   textDecorationColor?: string;
   borderColor?: string;
   borderStyle?: string;
   borderRadius?: string;
   borderWidth?: string;
   clipPath?: string;
+  /**
+   * @default "baseline"
+   */
   verticalAlign?:
     | "baseline"
     | "sub"
@@ -290,7 +356,9 @@ interface StructuredContentStyle {
     | "middle"
     | "top"
     | "bottom";
-  // "default": "baseline"
+  /**
+   * @default "start"
+   */
   textAlign?:
     | "start"
     | "end"
@@ -300,35 +368,55 @@ interface StructuredContentStyle {
     | "justify"
     | "justify-all"
     | "match-parent";
-  // "default": "start"
   textEmphasis?: string;
   textShadow?: string;
   margin?: string;
+  /**
+   * @default 0
+   */
   marginTop?: number | string;
-  // "default": 0
+  /**
+   * @default 0
+   */
   marginLeft?: number | string;
-  // "default": 0
+  /**
+   * @default 0
+   */
   marginRight?: number | string;
-  // "default": 0
+  /**
+   * @default 0
+   */
   marginBottom?: number | string;
-  // "default": 0
+  /**
+   * @default 0
+   */
   padding?: string;
   paddingTop?: string;
   paddingLeft?: string;
   paddingRight?: string;
   paddingBottom?: string;
+  /**
+   * @default "normal"
+   */
   wordBreak?: "normal" | "break-all" | "keep-all";
-  // "default": "normal"
+  /**
+   * @default "normal"
+   */
   whiteSpace?: string;
-  // "default": "normal"
+  /**
+   * @default "auto"
+   */
   cursor?: string;
-  // "default": "auto"
+  /**
+   * @default "disc"
+   */
   listStyleType?: string;
-  // "default": "disc"
 }
 
+/**
+ * @default "none"
+ */
 type StructuredContentStyle_textDecorationLine =
   | "underline"
   | "overline"
   | "line-through";
-// "default": "none"

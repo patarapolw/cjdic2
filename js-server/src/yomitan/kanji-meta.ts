@@ -37,20 +37,24 @@ export class KanjiMetaEntry {
  *
  * The meta bank for kanji information. Right now, this is only used to store kanji frequency data.
  *
- * @see https://github.com/themoeway/yomitan/tree/master/ext/data/schemas/dictionary-kanji-meta-bank-v3-schema.json
+ * @see https://github.com/yomidevs/yomitan/tree/master/ext/data/schemas/dictionary-kanji-meta-bank-v3-schema.json
  */
 type DictionaryKanjiMetaBankV3 = DictionaryKanjiMeta[];
 
+/**
+ * Metadata about a single kanji character.
+ * "minItems": 3,
+ * "maxItems": 3,
+ */
 type DictionaryKanjiMeta = [
-  // "description": "Metadata about a single kanji character.",
-  // "minItems": 3,
-  // "maxItems": 3,
+  /** "minLength": 1 */
+  string,
+  /**
+   * "const": "freq",
+   * Type of data. "freq" corresponds to frequency information.
+   */
+  string,
 
-  string,
-  // "minLength": 1
-  string,
-  // "const": "freq",
-  // "description": "Type of data. \"freq\" corresponds to frequency information."
   Frequency,
 ];
 

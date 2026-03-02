@@ -39,25 +39,27 @@ export class KanjiEntry {
  */
 type DictionaryKanjiBankV3 = DictionaryKanji[];
 
+/**
+ * Information about a single kanji character.
+ * "minItems": 6,
+ * "maxItems": 6,
+ */
 type DictionaryKanji = [
-  // "description": "Information about a single kanji character.",
-  // "minItems": 6,
-  // "maxItems": 6,
-
+  /**
+   * Kanji character.
+   * "minLength": 1
+   */
   string,
-  // "description": "Kanji character.",
-  // "minLength": 1
+  /** String of space-separated onyomi readings for the kanji character. An empty string is treated as no readings. */
   string,
-  // "description": "String of space-separated onyomi readings for the kanji character. An empty string is treated as no readings."
+  /** String of space-separated kunyomi readings for the kanji character. An empty string is treated as no readings. */
   string,
-  // "description": "String of space-separated kunyomi readings for the kanji character. An empty string is treated as no readings."
+  /** String of space-separated tags for the kanji character. An empty string is treated as no tags. */
   string,
-  // "description": "String of space-separated tags for the kanji character. An empty string is treated as no tags."
+  /** Array of meanings for the kanji character. */
   string[],
-  // "description": "Array of meanings for the kanji character.",
-
+  /** Various stats for the kanji character. */
   {
-    // "description": "Various stats for the kanji character.",
     [k: string]: string;
   },
 ];

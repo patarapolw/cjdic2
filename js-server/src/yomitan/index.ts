@@ -147,56 +147,65 @@ if (require.main === module) {
  * @see https://github.com/yomidevs/yomitan/blob/master/ext/data/schemas/dictionary-index-schema.json
  */
 interface DictionaryIndex {
+  /** Title of the dictionary. */
   title: string;
-  // "description": "Title of the dictionary."
+  /** Revision of the dictionary. This value is displayed, and used to check for dictionary updates. */
   revision: string;
-  // "description": "Revision of the dictionary. This value is displayed, and used to check for dictionary updates."
+  /** Minimum version of Yomitan that is compatible with this dictionary. */
   minimumYomitanVersion?: string;
-  // "description": "Minimum version of Yomitan that is compatible with this dictionary."
+  /**
+   * Whether or not this dictionary contains sequencing information for related terms.
+   * @default false
+   */
   sequenced?: boolean;
-  // "default": false,
-  // "description": "Whether or not this dictionary contains sequencing information for related terms."
+  /** Format of data found in the JSON data files. */
   format?: 1 | 2 | 3;
-  // "type": "integer",
-  // "description": "Format of data found in the JSON data files.",
-  // "enum": [1, 2, 3]
+  /** Alias for format. */
   version?: 1 | 2 | 3;
-  // "type": "integer",
-  // "description": "Alias for format.",
-  // "enum": [1, 2, 3]
+  /** Creator of the dictionary. */
   author?: string;
-  // "description": "Creator of the dictionary."
+  /**
+   * Whether this dictionary contains links to its latest version.
+   * @constant true
+   */
   isUpdatable?: boolean;
-  // "const": true,
-  // "description": "Whether this dictionary contains links to its latest version."
+  /** URL for the index file of the latest revision of the dictionary, used to check for updates. */
   indexUrl?: string;
-  // "description": "URL for the index file of the latest revision of the dictionary, used to check for updates."
+  /** URL for the download of the latest revision of the dictionary. */
   downloadUrl?: string;
-  // "description": "URL for the download of the latest revision of the dictionary."
+  /** URL for the source of the dictionary, displayed in the dictionary details. */
   url?: string;
-  // "description": "URL for the source of the dictionary, displayed in the dictionary details."
+  /** Description of the dictionary data. */
   description?: string;
-  // "description": "Description of the dictionary data."
+  /** Attribution information for the dictionary data. */
   attribution?: string;
-  // "description": "Attribution information for the dictionary data."
+  /**
+   * Language of the terms in the dictionary.
+   * @ref #/definitions/isoLanguageCode
+   */
   sourceLanguage?: string;
-  // "$ref": "#/definitions/isoLanguageCode",
-  // "description": "Language of the terms in the dictionary."
+  /**
+   * Main language of the definitions in the dictionary.
+   * @ref #/definitions/isoLanguageCode
+   */
   targetLanguage?: string;
-  // "$ref": "#/definitions/isoLanguageCode",
-  // "description": "Main language of the definitions in the dictionary."
-  frequencyMode?: "occurrence-based" | "rank-based";
-  tagMeta?: {
-    // "description": "Tag information for terms and kanji. This object is obsolete and individual tag files should be used instead.",
 
-    // "description": "Information about a single tag. The object key is the name of the tag.",
+  frequencyMode?: "occurrence-based" | "rank-based";
+  /**
+   * Tag information for terms and kanji. This object is obsolete and individual tag files should be used instead.
+   * Information about a single tag. The object key is the name of the tag.
+   */
+  tagMeta?: {
+    /** Category for the tag. */
     category?: string;
-    // "description": "Category for the tag."
+    /** Sorting order for the tag. */
     order?: number;
-    // "description": "Sorting order for the tag."
+    /** Notes for the tag. */
     notes?: string;
-    // "description": "Notes for the tag."
+    /** Score used to determine popularity.
+     * Negative values are more rare and positive values are more frequent.
+     * This score is also used to sort search results.
+     */
     score?: number;
-    // "description": "Score used to determine popularity. Negative values are more rare and positive values are more frequent. This score is also used to sort search results."
   };
 }

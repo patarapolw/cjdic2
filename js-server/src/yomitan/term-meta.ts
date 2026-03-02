@@ -89,6 +89,13 @@ export class TermMetaEntry {
   constructor(public json: TermMeta) {}
 }
 
+/**
+ * term_meta_bank_${number}.json
+ *
+ * Stores meta information about terms, such as frequency data and pitch accent data.
+ *
+ * @see https://github.com/yomidevs/yomitan/blob/master/ext/data/schemas/dictionary-term-meta-bank-v3-schema.json
+ */
 type DictionaryTermMetaBankV3 = DictionaryTermMeta[];
 
 type DictionaryTermMeta =
@@ -101,8 +108,8 @@ type DictionaryTermMeta_pitch = [string, "pitch", Pitch];
 type DictionaryTermMeta_ipa = [string, "ipa", IPA];
 
 interface ReadingFrequency {
+  /** Reading for the term. */
   reading: string;
-  // "description": "Reading for the term."
   frequency: Frequency;
 }
 
@@ -115,40 +122,54 @@ interface PitchEntry {
   position: PitchPosition_integer | PitchPosition_string;
   nasal?: PitchNasal | PitchNasal[];
   devoice?: PitchDevoice | PitchDevoice[];
+  /** Tag for this pitch accent. This typically corresponds to a certain type of part of speech. */
   tags?: string[];
-  // "description": "Tag for this pitch accent. This typically corresponds to a certain type of part of speech."
 }
 
+/**
+ * Mora position of the pitch accent downstep. A value of 0 indicates that the word does not have a downstep (heiban).
+ *
+ * "minimum": 0,
+ * "type": "integer",
+ */
 type PitchPosition_integer = number;
-// "type": "integer",
-// "description": "Mora position of the pitch accent downstep. A value of 0 indicates that the word does not have a downstep (heiban).",
-// "minimum": 0
 
+/**
+ * Pitch level of each mora with H representing high and L representing low.
+ * For example: HHLL for a 4 mora word. Add an additional pitch level at the end to explicitly define the suffix.
+ *
+ * "pattern": "^[HL]+$"
+ */
 type PitchPosition_string = string;
-// "type": "string",
-// "description": "Pitch level of each mora with H representing high and L representing low. For example: HHLL for a 4 mora word. Add an additional pitch level at the end to explicitly define the suffix.",
-// "pattern": "^[HL]+$"
 
+/**
+ * Position of a mora with nasal sound.
+ *
+ * "minimum": 0,
+ * "type": "integer",
+ */
 type PitchNasal = number;
-// "type": "integer",
-// "description": "Position of a mora with nasal sound.",
-// "minimum": 0
 
+/**
+ * Position of a mora with devoiced sound.
+ *
+ * "minimum": 0,
+ * "type": "integer",
+ */
 type PitchDevoice = number;
-// "type": "integer",
-// "description": "Position of a mora with devoiced sound.",
-// "minimum": 0
 
+/** IPA transcription information for the term. */
 interface IPA {
-  // "description": "IPA transcription information for the term.",
+  /** Reading for the term. */
   reading: string;
-  // "description": "Reading for the term."
+
   transcriptions: IPATranscription[];
 }
 
+/** IPA transcription for the term. */
 interface IPATranscription {
+  /** IPA transcription for the term. */
   ipa?: string;
-  // "description": "IPA transcription for the term."
+  /** Tag for this IPA transcription. */
   tags: string[];
-  // "description": "Tag for this IPA transcription."
 }
