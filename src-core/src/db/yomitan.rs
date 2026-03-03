@@ -2,7 +2,7 @@ use rusqlite::{Result, params};
 use serde::Serialize;
 
 use crate::{
-    CJDicError,
+    CJDicError, Timer,
     db::{Database, yomitan_writer::normalize_term},
 };
 
@@ -35,6 +35,8 @@ impl YomitanDatabase {
         limit: u32,
         offset: u32,
     ) -> Result<Vec<YomitanRow>, CJDicError> {
+        let _timer = Timer::new(format!("search_yomitan: {} {}", q_term, q_reading));
+
         let and_or = if q_term == q_reading { "OR" } else { "AND" };
 
         let mut new_t = String::new();

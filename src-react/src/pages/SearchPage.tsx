@@ -45,6 +45,19 @@ function SearchPage() {
 
   const lang = "ja-JP";
 
+  const isInit = useRef(false);
+  useEffect(() => {
+    if (isInit.current) return;
+    isInit.current = true;
+
+    invoke("search_yomitan", {
+      qTerm: "",
+      qReading: "",
+      limit: 1,
+      offset: 0,
+    });
+  });
+
   useEffect(() => {
     trySearch();
   }, [q]);
@@ -72,17 +85,18 @@ function SearchPage() {
   }
 
   async function runSearch(isNew = true) {
+    let norm_q = q.trim();
+    if (isAutoKana) {
+      norm_q = norm_q.replace(/n$/i, "ん").replace(/[a-z]$/i, "");
+    }
+    if (!norm_q) return;
+
     const ender = /\p{Z}$/u.test(q) ? "" : "*";
 
     const re = /\<(.+?)\>\[(.+?)\]/g;
 
     let qTerm = "";
     let qReading = "";
-
-    let norm_q = q.trim();
-    if (isAutoKana) {
-      norm_q = norm_q.replace(/n$/i, "ん").replace(/[a-z]$/i, "");
-    }
 
     norm_q.split(re).map((s, i) => {
       switch (i % 3) {

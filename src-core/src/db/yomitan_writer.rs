@@ -7,11 +7,10 @@ use std::{
     collections::HashMap,
     io::{Cursor, Read},
     path::{Path, PathBuf},
-    time::Instant,
 };
 use zip::ZipArchive;
 
-use crate::CJDicError;
+use crate::{CJDicError, Timer};
 
 fn blake3_hex(s: &str) -> String {
     format!("{}", hash(s.as_bytes()))
@@ -274,8 +273,8 @@ impl YomitanWriter {
         Callback: Fn(YomitanZipImportProgress),
     {
         let bundle_name = zip_file.file_name();
+        let _timer = Timer::new(format!("Importing {}", bundle_name));
 
-        let start_time = Instant::now();
         self.conn.execute_batch("PRAGMA foreign_keys = off")?;
 
         let cursor = Cursor::new(zip_file.bytes()?);
@@ -592,12 +591,6 @@ impl YomitanWriter {
         }
 
         tx.commit()?;
-
-        println!(
-            "Importing {} takes {:.2?}",
-            zip_file.file_name(),
-            start_time.elapsed()
-        );
 
         self.conn.execute_batch(
             "

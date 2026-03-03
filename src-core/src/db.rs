@@ -38,6 +38,7 @@ impl Database {
             PRAGMA jornal_mode = WAL;
             PRAGMA synchronous = NORMAL;
             PRAGMA foreign_keys = ON;
+            PRAGMA cache_size = -131072;
             ",
         )?;
 
@@ -81,6 +82,13 @@ impl Database {
             let uri = format!("file:{}?mode=ro&immutable=1", path);
 
             conn.execute("ATTACH DATABASE ?1 AS yomitan", [uri])?;
+
+            conn.execute_batch(
+                r"
+                PRAGMA yomitan.mmap_size = 3000000000; -- 3_000_000_000
+                ",
+            )?;
+
             self.yomitan_attached.store(true, Ordering::Release);
         }
 

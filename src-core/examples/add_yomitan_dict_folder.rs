@@ -1,11 +1,10 @@
 use std::{
     fs::read_dir,
     path::{Path, absolute},
-    time::Instant,
 };
 
 use anyhow::{Context, Ok};
-use cjdic2_core::AppService;
+use cjdic2_core::{AppService, Timer};
 
 mod common;
 use common::get_db_dir;
@@ -24,16 +23,14 @@ fn main() -> Result<(), anyhow::Error> {
         let p = e.path();
 
         if p.extension().and_then(|s| s.to_str()) == Some("zip") {
-            let start = Instant::now();
+            let _timer = Timer::new(format!("zip_file: {:?}", p));
 
-            println!("zip_file: {:?}", p);
             println!(
                 "{:?}",
                 AppService::import_yomitan_zip_file(&mut writer, &p, "ja", |progress| {
                     println!("{:?}", progress);
                 })?,
             );
-            println!("[{:.2?}]", start.elapsed());
         } else {
             println!("not zip_file: {:?}", p);
         }
