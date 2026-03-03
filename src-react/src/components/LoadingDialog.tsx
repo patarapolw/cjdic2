@@ -3,6 +3,14 @@ import { useEffect, useRef, useState } from "react";
 import { Dialog, Portal } from "@chakra-ui/react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import {
+  BaseDirectory,
+  exists,
+  readDir,
+  writeFile,
+} from "@tauri-apps/plugin-fs";
+
+import { supabase } from "../lib/supabaseClient";
 
 interface LoadYomitanZipDirResult {
   new_dicts: string[];
@@ -31,7 +39,26 @@ function LoadingDialog() {
     if (isInit.current) return;
     isInit.current = true;
 
-    invoke("init_yomitan").then(() => {
+    invoke("init_yomitan").then(async () => {
+      const { data, error } = await supabase.storage.from("yomitan").list("ja");
+      if (error) throw error;
+
+      for (const d of data || []) {
+        const filepath = `yomitan/ja/${d.name}`;
+        if (
+          await exists(filepath, {
+            baseDir: BaseDirectory.AppData,
+          })
+        )
+          continue;
+
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("yomitan").getPublicUrl(`ja/${d.name}`);
+
+        // await downloadURL(publicUrl, filepath, (received, total) => {});
+      }
+
       setMessages([]);
     });
 
@@ -105,3 +132,49 @@ function LoadingDialog() {
 }
 
 export default LoadingDialog;
+
+async function downloadURL(
+  url: string,
+  filepath: string,
+  progressCallback: (received: number, total: number) => void,
+) {
+  const r = await fetch(url);
+  if (!r.ok) throw r;
+  if (!r.body) throw r;
+
+  const contentLength = r.headers.get("Content-Length");
+  const total = contentLength ? parseInt(contentLength) : 0;
+
+  let receivedBytes = 0;
+
+  const reader = r.body.getReader();
+  const stream = new ReadableStream({
+    start(controller) {
+      function push() {
+        reader
+          .read()
+          .then(({ done, value }) => {
+            if (done) {
+              controller.close();
+              return;
+            }
+            receivedBytes += value.length;
+
+            // Calculate and log progress
+            if (total) progressCallback(receivedBytes, total);
+
+            controller.enqueue(value);
+            push(); // Read the next chunk
+          })
+          .catch((error) => {
+            console.error("Stream reading error:", error);
+            controller.error(error);
+          });
+      }
+
+      push(); // Start reading the data
+    },
+  });
+
+  await writeFile(filepath, stream, { baseDir: BaseDirectory.AppData });
+}

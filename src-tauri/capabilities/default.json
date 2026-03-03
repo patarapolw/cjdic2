@@ -16,6 +16,17 @@
         }
       ]
     },
-    "fs:default"
+    "fs:allow-exists",
+    "fs:allow-appdata-write",
+    "fs:allow-appdata-meta",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        "$APPDATA/**/*.zip"
+      ],
+      "deny": [
+        "$APPDATA/*.db"
+      ]
+    }
   ]
 }

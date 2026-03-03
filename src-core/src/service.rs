@@ -82,7 +82,7 @@ impl AppService {
                     rusqlite::types::ValueRef::Text(t) => {
                         serde_json::Value::String(String::from_utf8_lossy(t).into())
                     }
-                    _ => serde_json::Value::Null,
+                    rusqlite::types::ValueRef::Blob(_) => serde_json::Value::Null,
                 };
                 obj.insert(name.clone(), value);
             }
