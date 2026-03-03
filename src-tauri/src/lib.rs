@@ -15,20 +15,24 @@ pub fn run() {
         .setup(|app| {
             let app_dir = app.path().app_config_dir()?;
             create_dir_all(&app_dir)?;
-            // println!("{:?}", app_dir);
 
             // db_path is app_dir;
             let db_dir = app_dir.as_path();
-            // let db_dir = Path::new(r"D:\Projects\cjdic2\tmp\save-db");
             let service = AppService::new(&db_dir)?;
             app.manage(service);
+
+            let app_data_dir = app.path().app_data_dir()?;
+            create_dir_all(&app_data_dir.join("yomitan/ja"))?;
 
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             init_yomitan,
+            import_yomitan_dict,
+            remove_yomitan_dict,
             search_yomitan,
-            execute_sql
+            execute_sql,
+            download_url,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")

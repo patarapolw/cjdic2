@@ -10,7 +10,7 @@ fn main() -> Result<(), anyhow::Error> {
     {
         let _timer = Timer::new("remove one".to_string());
         let mut writer = service.get_yomitan_writer()?;
-        AppService::remove_yomitan_dictionary(&mut writer, "JMnedict")?;
+        AppService::remove_yomitan_dictionary(&mut writer, "JMnedict.zip", "ja")?;
     }
 
     Ok(())

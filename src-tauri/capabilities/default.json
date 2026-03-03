@@ -17,12 +17,13 @@
       ]
     },
     "fs:allow-exists",
-    "fs:allow-appdata-write",
-    "fs:allow-appdata-meta",
+    "fs:allow-read-dir",
+    "fs:allow-appdata-read",
     {
       "identifier": "fs:scope",
       "allow": [
-        "$APPDATA/**/*.zip"
+        "$APPDATA/**/*.zip",
+        "$APPDATA/yomitan/*"
       ],
       "deny": [
         "$APPDATA/*.db"

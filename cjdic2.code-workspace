@@ -17,7 +17,7 @@
     },
   ],
   "settings": {
-    "importSorter.generalConfiguration.sortOnBeforeSave": true,
+    // "importSorter.generalConfiguration.sortOnBeforeSave": true,
     "importSorter.importStringConfiguration.quoteMark": "double",
     "json.schemaDownload.enable": false,
   },

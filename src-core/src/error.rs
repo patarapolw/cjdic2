@@ -25,6 +25,9 @@ pub enum CJDicError {
 
     #[error("Not found")]
     NotFound,
+
+    #[error("Error: {0}")]
+    Error(String),
 }
 
 impl From<rusqlite::Error> for CJDicError {

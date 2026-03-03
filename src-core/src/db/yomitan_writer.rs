@@ -339,7 +339,7 @@ impl YomitanWriter {
             if let Some(row) = rows.next()? {
                 let is_outdated: bool = row.get(0)?;
                 if is_outdated {
-                    self.drop_dictionary(title)?;
+                    self.drop_dictionary(bundle_name, lang)?;
                 } else {
                     return Ok(YomitanZipImportResult {
                         exists: true,
@@ -608,9 +608,11 @@ impl YomitanWriter {
         })
     }
 
-    pub fn drop_dictionary(&self, title: &str) -> Result<()> {
-        self.conn
-            .execute("DELETE FROM dictionaries WHERE title = ?1", [title])?;
+    pub fn drop_dictionary(&self, bundle_name: &str, lang: &str) -> Result<()> {
+        self.conn.execute(
+            "DELETE FROM dictionaries WHERE bundle_name = ?1 AND lang = ?2",
+            [bundle_name, lang],
+        )?;
 
         Ok(())
     }

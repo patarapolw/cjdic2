@@ -228,8 +228,9 @@ impl AppService {
 
     pub fn remove_yomitan_dictionary(
         writer: &mut YomitanWriter,
-        title: &str,
+        bundle_name: &str,
+        lang: &str,
     ) -> Result<(), CJDicError> {
-        Ok(writer.drop_dictionary(title)?)
+        Ok(writer.drop_dictionary(bundle_name, lang)?)
     }
 }

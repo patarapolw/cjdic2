@@ -3,12 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { Dialog, Portal } from "@chakra-ui/react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import {
-  BaseDirectory,
-  exists,
-  readDir,
-  writeFile,
-} from "@tauri-apps/plugin-fs";
+import { BaseDirectory, exists } from "@tauri-apps/plugin-fs";
+import { fetch } from "@tauri-apps/plugin-http";
 
 import { supabase } from "../lib/supabaseClient";
 
@@ -22,6 +18,13 @@ interface YomitanZipImportProgress {
   current: number;
   total: number;
   steps: number;
+}
+
+interface DownloadProgress {
+  url: string;
+  filepath: string;
+  content_length: number;
+  downloaded: number;
 }
 
 interface Progress {
@@ -39,28 +42,102 @@ function LoadingDialog() {
     if (isInit.current) return;
     isInit.current = true;
 
-    invoke("init_yomitan").then(async () => {
-      const { data, error } = await supabase.storage.from("yomitan").list("ja");
-      if (error) throw error;
+    downloadAssets();
+    async function downloadAssets(lang = "ja") {
+      const new_dicts = new Set<string>();
+      // const to_be_removed_dicts = new Set<string>();
 
-      for (const d of data || []) {
-        const filepath = `yomitan/ja/${d.name}`;
-        if (
-          await exists(filepath, {
-            baseDir: BaseDirectory.AppData,
-          })
-        )
-          continue;
+      if (lang === "ja") {
+        await getPixiv().catch((e) => {
+          console.error(e);
+        });
+        async function getPixiv() {
+          const filename = "Pixiv.zip";
+          new_dicts.add(filename);
 
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("yomitan").getPublicUrl(`ja/${d.name}`);
+          const filepath = `yomitan/${lang}/${filename}`;
+          if (
+            !(await exists(filepath, {
+              baseDir: BaseDirectory.AppData,
+            }))
+          ) {
+            const publicUrl = await ghLatestReleaseURL(
+              "MarvNC/pixiv-yomitan",
+              /^Pixiv_.+\.zip$/,
+            );
 
-        // await downloadURL(publicUrl, filepath, (received, total) => {});
+            if (publicUrl) {
+              await invoke("download_url", { url: publicUrl, filepath });
+            }
+          }
+        }
+      }
+
+      let isSupabase = true;
+      await getSupabase().catch((e) => {
+        console.error(e);
+        isSupabase = false;
+      });
+      async function getSupabase() {
+        const { data, error } = await supabase.storage
+          .from("yomitan")
+          .list(lang);
+        if (error) throw error;
+
+        for (const d of data || []) {
+          new_dicts.add(d.name);
+          const filepath = `yomitan/${lang}/${d.name}`;
+          if (
+            !(await exists(filepath, {
+              baseDir: BaseDirectory.AppData,
+            }))
+          ) {
+            const {
+              data: { publicUrl },
+            } = supabase.storage
+              .from("yomitan")
+              .getPublicUrl(`${lang}/${d.name}`);
+
+            await invoke("download_url", { url: publicUrl, filepath });
+          }
+        }
+      }
+
+      if (isSupabase) {
+        // console.log([...new_dicts], [...to_be_removed_dicts]);
+        // for (const f of await readDir(`yomitan/${lang}`, {
+        //   baseDir: BaseDirectory.AppData,
+        // })) {
+        //   if (f.isFile && f.name.endsWith(".zip")) {
+        //     if (new_dicts.has(f.name)) {
+        //       new_dicts.delete(f.name);
+        //     } else {
+        //       to_be_removed_dicts.add(f.name);
+        //     }
+        //   }
+        // }
+        // for (const bundleName of Array.from(new_dicts).sort()) {
+        //   updateProgress({
+        //     message: `Importing ${bundleName}`,
+        //   });
+        //   await invoke("import_yomitan_dict", {
+        //     bundleName,
+        //     lang,
+        //   });
+        // }
+        // for (const bundleName of Array.from(to_be_removed_dicts).sort()) {
+        //   updateProgress({
+        //     message: `Removing old ${bundleName}`,
+        //   });
+        //   await invoke("remove_yomitan_dict", {
+        //     bundleName,
+        //     lang,
+        //   });
+        // }
       }
 
       setMessages([]);
-    });
+    }
 
     listen<LoadYomitanZipDirResult>("load-yomitan-dir", ({ payload }) => {
       setMessages((messages) => {
@@ -87,19 +164,31 @@ function LoadingDialog() {
     listen<YomitanZipImportProgress>(
       "yomitan-import-progress",
       ({ payload }) => {
-        setMessages((messages) => {
-          const prev = messages[messages.length - 1];
-          if (prev?.message === payload.message) {
-            messages = messages.slice(0, messages.length - 1);
-          }
-
-          messages = [...messages, payload];
-
-          return messages;
-        });
+        updateProgress(payload);
       },
     );
+
+    listen<DownloadProgress>("download-url-progress", ({ payload }) => {
+      updateProgress({
+        message: `Downloading ${payload.filepath} (MiB)`,
+        current: payload.downloaded >> 20,
+        total: payload.content_length >> 20,
+      });
+    });
   }, []);
+
+  function updateProgress(payload: Progress) {
+    setMessages((messages) => {
+      const prev = messages[messages.length - 1];
+      if (prev?.message === payload.message) {
+        messages = messages.slice(0, messages.length - 1);
+      }
+
+      messages = [...messages, payload];
+
+      return messages;
+    });
+  }
 
   return (
     <Dialog.Root open={messages.length > 0}>
@@ -133,48 +222,21 @@ function LoadingDialog() {
 
 export default LoadingDialog;
 
-async function downloadURL(
-  url: string,
-  filepath: string,
-  progressCallback: (received: number, total: number) => void,
-) {
-  const r = await fetch(url);
-  if (!r.ok) throw r;
-  if (!r.body) throw r;
-
-  const contentLength = r.headers.get("Content-Length");
-  const total = contentLength ? parseInt(contentLength) : 0;
-
-  let receivedBytes = 0;
-
-  const reader = r.body.getReader();
-  const stream = new ReadableStream({
-    start(controller) {
-      function push() {
-        reader
-          .read()
-          .then(({ done, value }) => {
-            if (done) {
-              controller.close();
-              return;
-            }
-            receivedBytes += value.length;
-
-            // Calculate and log progress
-            if (total) progressCallback(receivedBytes, total);
-
-            controller.enqueue(value);
-            push(); // Read the next chunk
-          })
-          .catch((error) => {
-            console.error("Stream reading error:", error);
-            controller.error(error);
-          });
-      }
-
-      push(); // Start reading the data
+/**
+ * @see https://docs.github.com/en/rest/releases/releases?apiVersion=2022-11-28#get-the-latest-release
+ */
+async function ghLatestReleaseURL(user_repo: string, assetName: RegExp) {
+  const releaseData: {
+    assets: { name: string; browser_download_url: string }[];
+  } = await fetch(`https://api.github.com/repos/${user_repo}/releases/latest`, {
+    headers: {
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "User-Agent": "cjdic2",
     },
-  });
+  }).then((r) => r.json());
 
-  await writeFile(filepath, stream, { baseDir: BaseDirectory.AppData });
+  const a = releaseData.assets.find((a) => assetName.test(a.name));
+  if (!a) return;
+  return a.browser_download_url;
 }
