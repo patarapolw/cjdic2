@@ -1,6 +1,6 @@
 use std::{borrow::Cow, path::PathBuf};
 
-use cjdic2_core::{AppService, CJDicError, YomitanRow, ZipSource};
+use cjdic2_core::{AppService, CJDicError, SqlParam, YomitanRow, ZipSource};
 use tauri::{AppHandle, Emitter, Manager, Runtime, path::BaseDirectory};
 use tauri_plugin_fs::FsExt;
 
@@ -103,4 +103,13 @@ pub async fn search_yomitan(
     state: tauri::State<'_, AppService>,
 ) -> Result<Vec<YomitanRow>, CJDicError> {
     state.search_yomitan(q_term, q_reading, limit, offset)
+}
+
+#[tauri::command]
+pub async fn execute_sql(
+    sql: String,
+    params: Vec<SqlParam>,
+    state: tauri::State<'_, AppService>,
+) -> Result<serde_json::Value, CJDicError> {
+    state.execute_sql(sql, params)
 }

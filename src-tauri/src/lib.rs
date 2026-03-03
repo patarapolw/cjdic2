@@ -25,7 +25,11 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![init_yomitan, search_yomitan])
+        .invoke_handler(tauri::generate_handler![
+            init_yomitan,
+            search_yomitan,
+            execute_sql
+        ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(|_app_handle, event| match event {

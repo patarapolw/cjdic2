@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { toHiragana } from "wanakana";
+import { toKana } from "wanakana";
 
 import {
   Box,
@@ -145,7 +145,7 @@ function SearchPage() {
 
   function onSearchboxChange(q: string) {
     if (isAutoKana) {
-      q = toHiragana(q, { useObsoleteKana: true, IMEMode: true });
+      q = toKana(q, { useObsoleteKana: true, IMEMode: true });
     }
 
     setQ(q);

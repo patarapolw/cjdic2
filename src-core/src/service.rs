@@ -3,11 +3,11 @@ use std::{
     path::Path,
 };
 
-use rusqlite::Connection;
-use serde::Serialize;
+use rusqlite::{Connection, params_from_iter};
+use serde::{Deserialize, Serialize};
 
 use crate::{
-    ZipSource,
+    Timer, ZipSource,
     db::{
         Database, YOMITAN_DBFILE, YomitanRow, YomitanWriter, YomitanZipImportProgress,
         YomitanZipImportResult,
@@ -21,6 +21,16 @@ pub struct LoadYomitanZipDirResult {
     pub to_be_removed_dicts: Vec<String>,
 }
 
+#[derive(Deserialize)]
+#[serde(untagged)]
+pub enum SqlParam {
+    Null,
+    Integer(i64),
+    Real(f64),
+    Text(String),
+    Bool(bool),
+}
+
 pub struct AppService {
     db: Database,
 }
@@ -29,6 +39,58 @@ impl AppService {
     pub fn new<P: AsRef<Path>>(db_dir: P) -> Result<Self, CJDicError> {
         let db = Database::new(db_dir)?;
         Ok(Self { db })
+    }
+
+    pub fn execute_sql(
+        &self,
+        sql: String,
+        params: Vec<SqlParam>,
+    ) -> Result<serde_json::Value, CJDicError> {
+        let _timer = Timer::new(sql.to_string());
+
+        let conn = self.db.conn.lock().unwrap();
+        let converted_params: Vec<_> = params
+            .into_iter()
+            .map(|p| match p {
+                SqlParam::Null => rusqlite::types::Value::Null,
+                SqlParam::Integer(i) => rusqlite::types::Value::Integer(i),
+                SqlParam::Real(n) => rusqlite::types::Value::Real(n),
+                SqlParam::Text(s) => rusqlite::types::Value::Text(s),
+                SqlParam::Bool(b) => rusqlite::types::Value::Integer(b as i64),
+            })
+            .collect();
+
+        let mut stmt = conn.prepare(&sql)?;
+
+        if stmt.column_count() == 0 {
+            let affected = stmt.execute(params_from_iter(converted_params))?;
+            return Ok(serde_json::Value::Number(affected.into()));
+        }
+
+        let column_names: Vec<String> = stmt.column_names().iter().map(|s| s.to_string()).collect();
+        let rows = stmt.query_map(params_from_iter(converted_params), |row| {
+            let mut obj = serde_json::Map::new();
+
+            for (i, name) in column_names.iter().enumerate() {
+                let value = match row.get_ref(i)? {
+                    rusqlite::types::ValueRef::Null => serde_json::Value::Null,
+                    rusqlite::types::ValueRef::Integer(i) => serde_json::Value::Number(i.into()),
+                    // Boolean are also rendered as an integer.
+                    rusqlite::types::ValueRef::Real(n) => serde_json::Number::from_f64(n)
+                        .map(serde_json::Value::Number)
+                        .unwrap_or(serde_json::Value::Null),
+                    rusqlite::types::ValueRef::Text(t) => {
+                        serde_json::Value::String(String::from_utf8_lossy(t).into())
+                    }
+                    _ => serde_json::Value::Null,
+                };
+                obj.insert(name.clone(), value);
+            }
+            return Ok(serde_json::Value::Object(obj));
+        })?;
+
+        let result: Result<Vec<_>, _> = rows.collect();
+        Ok(serde_json::Value::Array(result?))
     }
 
     pub fn search_yomitan(
