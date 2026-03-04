@@ -8,26 +8,7 @@
   "permissions": [
     "core:default",
     "opener:default",
-    {
-      "identifier": "http:default",
-      "allow": [
-        {
-          "url": "https://api.github.com"
-        }
-      ]
-    },
-    "fs:allow-exists",
-    "fs:allow-read-dir",
-    "fs:allow-appdata-read",
-    {
-      "identifier": "fs:scope",
-      "allow": [
-        "$APPDATA/**/*.zip",
-        "$APPDATA/yomitan/*"
-      ],
-      "deny": [
-        "$APPDATA/*.db"
-      ]
-    }
+    "http:default",
+    "fs:default"
   ]
 }

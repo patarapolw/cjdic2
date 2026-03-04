@@ -215,6 +215,7 @@ function SearchPage() {
           <InputGroup endElement={clearButton}>
             <Input
               id="greet-input"
+              type="text"
               ref={searchboxRef}
               value={q}
               onChange={(e) => onSearchboxChange(e.currentTarget.value)}

@@ -1,9 +1,9 @@
 use std::{fs::File, io::Write, path::PathBuf};
 
 use cjdic2_core::{AppService, CJDicError, SqlParam, YomitanRow, YomitanZipImportResult};
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
+use tauri_plugin_http::reqwest::Client;
 
 #[derive(Deserialize)]
 pub struct YomitanDictEntry {
@@ -154,6 +154,8 @@ where
     if response.status().is_success() {
         let content_length = response.content_length().unwrap_or(0);
         let mut file = File::create(&file_pf).map_err(|e| CJDicError::Error(e.to_string()))?;
+
+        println!("{}", content_length);
 
         // Downloading the file in chunks
         let mut downloaded: u64 = 0;

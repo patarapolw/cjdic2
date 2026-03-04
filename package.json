@@ -8,8 +8,10 @@
     "dev:mobile": "tauri dev -c src-tauri/tauri.mobile.conf.json",
     "dev:android": "tauri android dev",
     "build:desktop": "tauri build",
-    "build:android": "tauri android build --debug",
-    "install:android": "adb install -r src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk",
+    "build:android": "tauri android build",
+    "install:android": "adb install -r src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk",
+    "build:android:debug": "tauri android build --debug",
+    "install:android:debug": "adb install -r src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk",
     "dev": "cd src-react && pnpm run dev",
     "build": "cd src-react && pnpm run build",
     "tauri": "tauri"

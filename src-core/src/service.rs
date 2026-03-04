@@ -132,10 +132,13 @@ impl AppService {
         LoadCallback: Fn(LoadYomitanZipDirResult),
         ImportCallback: Fn(YomitanZipImportProgress),
     {
-        let mut dir_zip_map: HashMap<String, Z> = HashMap::new();
+        let mut dir_zip_map: HashMap<String, &Z> = HashMap::new();
+        let mut zip_dir_ord: HashMap<String, usize> = HashMap::new();
 
-        for entry in zip_dir {
-            dir_zip_map.insert(entry.file_name().to_string(), entry);
+        for (i, entry) in zip_dir.iter().enumerate() {
+            let filename = entry.file_name();
+            dir_zip_map.insert(filename.to_string(), entry);
+            zip_dir_ord.insert(filename.to_string(), i);
         }
 
         {
@@ -173,16 +176,8 @@ impl AppService {
         }
 
         // Import ordering
-        new_dicts.sort_by_key(|s| {
-            if s.starts_with("[")
-                && let Some(end_i) = s.find(']')
-            {
-                s[(end_i + 1)..].trim_start().to_string()
-            } else {
-                s.to_string()
-            }
-        });
-        to_be_removed_dicts.sort();
+        new_dicts.sort_by_key(|s| zip_dir_ord.get(s));
+        to_be_removed_dicts.sort_by_key(|s| zip_dir_ord.get(s));
 
         load_callback(LoadYomitanZipDirResult {
             new_dicts: new_dicts.clone(),
@@ -205,7 +200,7 @@ impl AppService {
 
             for z in new_dicts.clone().iter() {
                 if let Some(zip_file) = dir_zip_map.get(z) {
-                    Self::import_yomitan_zip_file(&mut writer, zip_file, lang, &import_callback)?;
+                    Self::import_yomitan_zip_file(&mut writer, *zip_file, lang, &import_callback)?;
                 }
             }
         }

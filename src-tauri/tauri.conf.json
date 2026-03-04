@@ -23,10 +23,6 @@
     }
   },
   "bundle": {
-    "resources": [
-      "resources/**/*.zip",
-      "resources/**/manifest.json"
-    ],
     "active": true,
     "targets": "all",
     "icon": [
