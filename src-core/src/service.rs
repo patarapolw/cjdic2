@@ -192,7 +192,10 @@ impl AppService {
         {
             let conn = Connection::open(self.db.dir.join(YOMITAN_DBFILE))?;
             for z in to_be_removed_dicts.clone().iter() {
-                conn.execute("DELETE FROM dictionaries WHERE bundle_name = ?1", [z])?;
+                conn.execute(
+                    "DELETE FROM dictionaries WHERE bundle_name = ?1 AND lang = ?2",
+                    [z, lang],
+                )?;
             }
         }
 

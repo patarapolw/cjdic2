@@ -45,19 +45,6 @@ function SearchPage() {
 
   const lang = "ja-JP";
 
-  const isInit = useRef(false);
-  useEffect(() => {
-    if (isInit.current) return;
-    isInit.current = true;
-
-    invoke("search_yomitan", {
-      qTerm: "",
-      qReading: "",
-      limit: 1,
-      offset: 0,
-    });
-  });
-
   useEffect(() => {
     trySearch();
   }, [q]);

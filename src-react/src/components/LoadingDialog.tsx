@@ -3,10 +3,13 @@ import { useEffect, useRef, useState } from "react";
 import { Dialog, Portal } from "@chakra-ui/react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { BaseDirectory, exists } from "@tauri-apps/plugin-fs";
-import { fetch } from "@tauri-apps/plugin-http";
 
 import { supabase } from "../lib/supabaseClient";
+
+interface YomitanDictEntry {
+  url: string;
+  filepath: string;
+}
 
 interface LoadYomitanZipDirResult {
   new_dicts: string[];
@@ -44,99 +47,55 @@ function LoadingDialog() {
 
     downloadAssets();
     async function downloadAssets(lang = "ja") {
-      const new_dicts = new Set<string>();
-      // const to_be_removed_dicts = new Set<string>();
+      const dicts: YomitanDictEntry[] = [];
 
       if (lang === "ja") {
-        await getPixiv().catch((e) => {
-          console.error(e);
-        });
-        async function getPixiv() {
+        {
           const filename = "Pixiv.zip";
-          new_dicts.add(filename);
-
           const filepath = `yomitan/${lang}/${filename}`;
-          if (
-            !(await exists(filepath, {
-              baseDir: BaseDirectory.AppData,
-            }))
-          ) {
-            const publicUrl = await ghLatestReleaseURL(
-              "MarvNC/pixiv-yomitan",
-              /^Pixiv_.+\.zip$/,
-            );
 
-            if (publicUrl) {
-              await invoke("download_url", { url: publicUrl, filepath });
-            }
+          dicts.push({
+            filepath,
+            url:
+              (await ghLatestReleaseURL(
+                "MarvNC/pixiv-yomitan",
+                /^Pixiv_.+\.zip$/,
+              ).catch((e) => {
+                console.error(e);
+                return "";
+              })) || "",
+          });
+        }
+
+        {
+          const { data, error } = await supabase.storage
+            .from("yomitan")
+            .list(lang);
+          if (error) throw error;
+
+          for (const d of data || []) {
+            const filepath = `yomitan/${lang}/${d.name}`;
+
+            dicts.push({
+              filepath,
+              url: supabase.storage
+                .from("yomitan")
+                .getPublicUrl(`${lang}/${d.name}`).data.publicUrl,
+            });
           }
         }
       }
 
-      let isSupabase = true;
-      await getSupabase().catch((e) => {
-        console.error(e);
-        isSupabase = false;
-      });
-      async function getSupabase() {
-        const { data, error } = await supabase.storage
-          .from("yomitan")
-          .list(lang);
-        if (error) throw error;
-
-        for (const d of data || []) {
-          new_dicts.add(d.name);
-          const filepath = `yomitan/${lang}/${d.name}`;
-          if (
-            !(await exists(filepath, {
-              baseDir: BaseDirectory.AppData,
-            }))
-          ) {
-            const {
-              data: { publicUrl },
-            } = supabase.storage
-              .from("yomitan")
-              .getPublicUrl(`${lang}/${d.name}`);
-
-            await invoke("download_url", { url: publicUrl, filepath });
-          }
-        }
-      }
-
-      if (isSupabase) {
-        // console.log([...new_dicts], [...to_be_removed_dicts]);
-        // for (const f of await readDir(`yomitan/${lang}`, {
-        //   baseDir: BaseDirectory.AppData,
-        // })) {
-        //   if (f.isFile && f.name.endsWith(".zip")) {
-        //     if (new_dicts.has(f.name)) {
-        //       new_dicts.delete(f.name);
-        //     } else {
-        //       to_be_removed_dicts.add(f.name);
-        //     }
-        //   }
-        // }
-        // for (const bundleName of Array.from(new_dicts).sort()) {
-        //   updateProgress({
-        //     message: `Importing ${bundleName}`,
-        //   });
-        //   await invoke("import_yomitan_dict", {
-        //     bundleName,
-        //     lang,
-        //   });
-        // }
-        // for (const bundleName of Array.from(to_be_removed_dicts).sort()) {
-        //   updateProgress({
-        //     message: `Removing old ${bundleName}`,
-        //   });
-        //   await invoke("remove_yomitan_dict", {
-        //     bundleName,
-        //     lang,
-        //   });
-        // }
-      }
-
+      await invoke("init_yomitan", { dicts, lang });
       setMessages([]);
+
+      // empty query warmup
+      await invoke("search_yomitan", {
+        qTerm: "",
+        qReading: "",
+        limit: 1,
+        offset: 0,
+      });
     }
 
     listen<LoadYomitanZipDirResult>("load-yomitan-dir", ({ payload }) => {
@@ -144,7 +103,7 @@ function LoadingDialog() {
         if (payload.new_dicts.length > 0) {
           messages = [
             ...messages,
-            { message: "Importing Yomitan zip from the app bundle:" },
+            { message: "Importing Yomitan zip:" },
             ...payload.new_dicts.map((d) => ({ message: `- ${d}` })),
           ];
         }
