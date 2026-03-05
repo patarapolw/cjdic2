@@ -1,8 +1,9 @@
-use std::fs::create_dir_all;
+use std::fs::{self, create_dir_all};
 
 use crate::command::*;
 use cjdic2_core::*;
 use tauri::Manager;
+use tauri_plugin_fs::FsExt;
 
 mod command;
 
@@ -17,9 +18,27 @@ pub fn run() {
             let app_dir = app.path().app_config_dir()?;
             create_dir_all(&app_dir)?;
 
+            let dict_path = {
+                // Resolve the resource path (returns asset://localhost/ URI on Android)
+                let resource_path = app.path().resolve(
+                    "resources/ipadic-mecab/system.dic.zst",
+                    tauri::path::BaseDirectory::Resource,
+                )?;
+
+                // Use Tauri's fs abstraction — works on both Android and desktop
+                let bytes = app.fs().read(&resource_path)?;
+
+                // Write to app's cache dir, which IS a real writable filesystem path on Android
+                let cache_dir = app.path().cache_dir()?;
+                create_dir_all(&cache_dir)?;
+                let dict_path = cache_dir.join("system.dic.zst");
+                fs::write(&dict_path, &bytes)?;
+
+                dict_path
+            };
+
             // db_path is app_dir;
-            let db_dir = app_dir.as_path();
-            let service = AppService::new(&db_dir)?;
+            let service = AppService::new(&app_dir, &dict_path)?;
             app.manage(service);
 
             let app_data_dir = app.path().app_data_dir()?;
@@ -34,6 +53,7 @@ pub fn run() {
             search_yomitan,
             execute_sql,
             download_url,
+            tokenize,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

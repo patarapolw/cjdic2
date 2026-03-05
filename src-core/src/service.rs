@@ -1,10 +1,12 @@
 use std::{
     collections::{HashMap, HashSet},
+    fs::File,
     path::Path,
 };
 
 use rusqlite::{Connection, params_from_iter};
 use serde::{Deserialize, Serialize};
+use vibrato::{Dictionary, Tokenizer};
 
 use crate::{
     Timer, ZipSource,
@@ -31,14 +33,55 @@ pub enum SqlParam {
     Bool(bool),
 }
 
+#[derive(Debug, Serialize)]
+pub struct TokenizeSegment {
+    surface: String,
+    /// 0	品詞	Part-of-speech
+    /// 1	品詞細分類1	Part-of-speech subcategory 1
+    /// 2	品詞細分類2	Part-of-speech subcategory 2
+    /// 3	品詞細分類3	Part-of-speech subcategory 3
+    /// 4	活用形	Conjugation form
+    /// 5	活用型	Conjugation type
+    /// 6	原形	Base form
+    /// 7	読み	Reading
+    /// 8	発音	Pronunciation
+    /// @see https://lindera.github.io/lindera/dictionaries/ipadic.html
+    details: Vec<String>,
+}
+
 pub struct AppService {
     db: Database,
+    ja_tokenizer: Tokenizer,
 }
 
 impl AppService {
-    pub fn new<P: AsRef<Path>>(db_dir: P) -> Result<Self, CJDicError> {
+    pub fn new<P: AsRef<Path>>(db_dir: P, vibrato_dict: P) -> Result<Self, CJDicError> {
         let db = Database::new(db_dir)?;
-        Ok(Self { db })
+
+        let ja_tokenizer = {
+            let reader = zstd::Decoder::new(File::open(vibrato_dict)?)?;
+            let dictionary = Dictionary::read(reader)?;
+            Tokenizer::new(dictionary)
+        };
+
+        Ok(Self { db, ja_tokenizer })
+    }
+
+    pub fn ja_tokenize(&self, text: String) -> Result<Vec<TokenizeSegment>, CJDicError> {
+        let mut worker = self.ja_tokenizer.new_worker();
+        worker.reset_sentence(text);
+        worker.tokenize();
+
+        let mut output: Vec<TokenizeSegment> = vec![];
+
+        for token in worker.token_iter() {
+            let surface = token.surface().to_string();
+            let details = token.feature().split(",").map(|s| s.to_string()).collect();
+
+            output.push(TokenizeSegment { surface, details });
+        }
+
+        Ok(output)
     }
 
     pub fn execute_sql(

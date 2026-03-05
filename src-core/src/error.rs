@@ -1,5 +1,6 @@
 use serde::Serialize;
 use thiserror::Error;
+use vibrato::errors::VibratoError;
 use zip::result::ZipError;
 
 #[derive(Debug, Error, Serialize)]
@@ -22,6 +23,9 @@ pub enum CJDicError {
 
     #[error("Zip error: {0}")]
     ZipError(String),
+
+    #[error("Vibrato error: {0}")]
+    VibratoError(String),
 
     #[error("Not found")]
     NotFound,
@@ -62,5 +66,12 @@ impl From<ZipError> for CJDicError {
     fn from(e: ZipError) -> Self {
         log::error!("{e:#}");
         CJDicError::ZipError(e.to_string())
+    }
+}
+
+impl From<VibratoError> for CJDicError {
+    fn from(e: VibratoError) -> Self {
+        log::error!("{e:#}");
+        CJDicError::VibratoError(e.to_string())
     }
 }

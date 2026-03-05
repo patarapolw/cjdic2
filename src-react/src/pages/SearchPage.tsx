@@ -94,7 +94,9 @@ function SearchPage() {
   }
 
   async function runSearch(isNew = true) {
-    let norm_q = q.trim();
+    let norm_q = q.split(" ")[0].trim();
+    const isFromSplit = norm_q !== q.trim();
+
     if (isAutoKana) {
       norm_q = norm_q.replace(/n$/i, "ん").replace(/[a-z]$/i, "");
     }
@@ -132,6 +134,22 @@ function SearchPage() {
     });
 
     if (isNew) {
+      if (!result.length && !isFromSplit && ender === "" && q.length > 2) {
+        const segs = await invoke<{ surface: string }[]>("tokenize", {
+          text: q,
+        });
+        if (segs.length > 1) {
+          const newQ =
+            segs.shift()!.surface +
+            " " +
+            segs.map((s) => s.surface).join("") +
+            " ";
+
+          setQ(newQ);
+          return;
+        }
+      }
+
       setEntries(result);
     } else {
       setEntries([...entries, ...result]);

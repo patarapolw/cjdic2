@@ -23,6 +23,9 @@
     }
   },
   "bundle": {
+    "resources": [
+      "resources/**/system.dic.zst"
+    ],
     "active": true,
     "targets": "all",
     "icon": [

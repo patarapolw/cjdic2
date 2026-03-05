@@ -5,7 +5,7 @@ mod util;
 
 pub use db::{YomitanRow, YomitanZipImportProgress, YomitanZipImportResult, ZipSource};
 pub use error::CJDicError;
-pub use service::{AppService, SqlParam};
+pub use service::{AppService, SqlParam, TokenizeSegment};
 pub use util::Timer;
 
 pub fn add(left: u64, right: u64) -> u64 {

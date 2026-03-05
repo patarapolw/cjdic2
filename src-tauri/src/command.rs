@@ -3,7 +3,9 @@ use std::{
     path::PathBuf,
 };
 
-use cjdic2_core::{AppService, CJDicError, SqlParam, YomitanRow, YomitanZipImportResult};
+use cjdic2_core::{
+    AppService, CJDicError, SqlParam, TokenizeSegment, YomitanRow, YomitanZipImportResult,
+};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_http::reqwest::Client;
@@ -241,4 +243,12 @@ pub async fn download_url(
     )
     .await
     .map_err(|e| CJDicError::Error(e.to_string()))
+}
+
+#[tauri::command]
+pub async fn tokenize(
+    text: String,
+    state: tauri::State<'_, AppService>,
+) -> Result<Vec<TokenizeSegment>, CJDicError> {
+    state.ja_tokenize(text)
 }

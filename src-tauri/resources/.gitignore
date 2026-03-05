@@ -4,3 +4,5 @@
 jmdict.db
 
 manifest.json
+# vibrato dicts from https://github.com/daac-tools/vibrato/releases
+system.dic.zst
