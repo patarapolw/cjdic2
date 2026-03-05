@@ -114,6 +114,8 @@ function SearchPage() {
     } else {
       setEntries([...entries, ...result]);
     }
+
+    return result;
   }
 
   const onEntriesScrollEnd: UIEventHandler = async ({ target }) => {
@@ -123,7 +125,11 @@ function SearchPage() {
     if (scrollHeight - 20 > scrollTop + target.getBoundingClientRect().height)
       return;
 
-    await runSearch(false);
+    const results = await runSearch(false);
+    if (!results?.length) {
+      target.style.paddingBottom = "50vh";
+      return;
+    }
 
     setTimeout(() => {
       target.scrollTop = scrollTop + 100;
