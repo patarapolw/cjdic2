@@ -11,7 +11,10 @@ async function main() {
   const { data, error } = await supabase.storage.from("yomitan").list("ja");
   if (error) throw error;
   if (data) {
-    console.log(data.map((d) => d.id));
+    console.log(data);
+    // no sha256, but may be precomputed and manually placed at data[*].metadata.*
+    // data[*].metadata.{size,contentLength} could be meaningful
+    // GitHub releases uses digest: 'sha256:*' in assets[*].digest currently
 
     const toDownload = data.filter(() => true);
 

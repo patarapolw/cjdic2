@@ -1,9 +1,14 @@
-use std::{fs::File, io::Write, path::PathBuf};
+use std::{
+    fs::{File, remove_file},
+    io::Write,
+    path::PathBuf,
+};
 
 use cjdic2_core::{AppService, CJDicError, SqlParam, YomitanRow, YomitanZipImportResult};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_http::reqwest::Client;
+use zip::ZipArchive;
 
 #[derive(Deserialize)]
 pub struct YomitanDictEntry {
@@ -27,18 +32,21 @@ pub async fn init_yomitan(
         .map_err(|e| CJDicError::Error(e.to_string()))?;
 
     for d in dicts.iter().clone() {
-        if !app_dir.join(&d.filepath).exists() {
-            download_url_local(
-                d.url.clone(),
-                app_dir.clone(),
-                d.filepath.clone(),
-                |progress| {
-                    app.emit("download-url-progress", progress).unwrap();
-                },
-            )
-            .await
-            .map_err(|e| CJDicError::Error(e.to_string()))?;
+        let zip_path = app_dir.join(&d.filepath);
+        if zip_path.exists() && File::open(zip_path).is_ok_and(|f| ZipArchive::new(f).is_ok()) {
+            continue;
         }
+
+        download_url_local(
+            d.url.clone(),
+            app_dir.clone(),
+            d.filepath.clone(),
+            |progress| {
+                app.emit("download-url-progress", progress).unwrap();
+            },
+        )
+        .await
+        .map_err(|e| CJDicError::Error(e.to_string()))?;
     }
 
     let zip_files: Vec<PathBuf> = dicts
@@ -155,8 +163,6 @@ where
         let content_length = response.content_length().unwrap_or(0);
         let mut file = File::create(&file_pf).map_err(|e| CJDicError::Error(e.to_string()))?;
 
-        println!("{}", content_length);
-
         // Downloading the file in chunks
         let mut downloaded: u64 = 0;
         while let Some(chunk) = response
@@ -174,6 +180,18 @@ where
                 downloaded,
             });
         }
+
+        // Verify download completeness
+        if content_length > 0 && downloaded < content_length {
+            // Delete incomplete file
+            drop(file); // ensure file handle is released before deleting
+            remove_file(&file_pf).ok();
+            return Err(CJDicError::Error(format!(
+                "Incomplete download: expected {} bytes, got {}",
+                content_length, downloaded
+            )));
+        }
+
         println!("File downloaded successfully to {:?}", &file_pf);
     } else {
         eprintln!("Failed to download file: {:?}", response.status());
