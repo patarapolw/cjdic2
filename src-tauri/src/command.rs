@@ -1,6 +1,5 @@
 use std::{
     fs::{File, remove_file},
-    io::Write,
     path::PathBuf,
 };
 
@@ -8,6 +7,7 @@ use cjdic2_core::{AppService, CJDicError, SqlParam, YomitanRow, YomitanZipImport
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_http::reqwest::Client;
+use tokio::io::AsyncWriteExt;
 use zip::ZipArchive;
 
 #[derive(Deserialize)]
@@ -151,9 +151,22 @@ where
     let client = Client::new();
     let file_pf = data_dir.join(filepath.as_str());
 
+    let temp_pf = data_dir.join(format!("{}.dl-tmp", filepath));
+    let temp_path = temp_pf.as_path();
+    // Check existing partial download size
+    let existing_size = tokio::fs::metadata(temp_path)
+        .await
+        .map(|m| m.len())
+        .unwrap_or(0);
+
+    let mut request = client.get(url.as_str());
+    // Request only the remaining bytes
+    if existing_size > 0 {
+        request = request.header("Range", format!("bytes={}-", existing_size));
+    }
+
     // Making the asynchronous GET request
-    let mut response = client
-        .get(url.as_str())
+    let mut response = request
         .send()
         .await
         .map_err(|e| CJDicError::Error(e.to_string()))?;
@@ -161,7 +174,17 @@ where
     // Check if the request was successful
     if response.status().is_success() {
         let content_length = response.content_length().unwrap_or(0);
-        let mut file = File::create(&file_pf).map_err(|e| CJDicError::Error(e.to_string()))?;
+        let mut file = if existing_size > 0 {
+            tokio::fs::OpenOptions::new()
+                .append(true)
+                .open(temp_path)
+                .await
+                .map_err(|e| CJDicError::Error(e.to_string()))?
+        } else {
+            tokio::fs::File::create(&file_pf)
+                .await
+                .map_err(|e| CJDicError::Error(e.to_string()))?
+        };
 
         // Downloading the file in chunks
         let mut downloaded: u64 = 0;
@@ -170,7 +193,7 @@ where
             .await
             .map_err(|e| CJDicError::Error(e.to_string()))?
         {
-            file.write_all(&chunk)?;
+            file.write_all(&chunk).await?;
             downloaded += chunk.len() as u64;
 
             callback(DownloadProgress {
