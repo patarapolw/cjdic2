@@ -18,6 +18,7 @@ import {
   Switch,
 } from "@chakra-ui/react";
 import { invoke } from "@tauri-apps/api/core";
+import { readText } from "@tauri-apps/plugin-clipboard-manager";
 
 import Glossary from "../components/Glossary";
 
@@ -44,6 +45,27 @@ function SearchPage() {
   const searchboxRef = useRef<HTMLInputElement | null>(null);
 
   const lang = "ja-JP";
+
+  const [isMonitorClipboard, set_isMonitorclipboard] = useState(false);
+  const [, set_clipboardText] = useState("");
+
+  useEffect(() => {
+    if (!isMonitorClipboard) return;
+
+    const intervalId = setInterval(async () => {
+      const newText = await readText();
+
+      set_clipboardText((clipboardText) => {
+        if (clipboardText !== newText) {
+          setQ(newText + " ");
+          return newText;
+        }
+        return clipboardText;
+      });
+    }, 500);
+
+    return () => clearInterval(intervalId);
+  }, [isMonitorClipboard]);
 
   useEffect(() => {
     trySearch();
@@ -234,7 +256,7 @@ function SearchPage() {
           </InputGroup>
           {/* <Button type="submit">Search</Button> */}
         </Group>
-        <div style={{ marginTop: "0.5em" }}>
+        <div style={{ marginTop: "0.5em", display: "flex", gap: "1em" }}>
           <Switch.Root
             checked={isAutoKana}
             onCheckedChange={(d) => set_isAutoKana(d.checked)}
@@ -242,6 +264,14 @@ function SearchPage() {
             <Switch.HiddenInput />
             <Switch.Control />
             <Switch.Label>Auto-convert Kana</Switch.Label>
+          </Switch.Root>
+          <Switch.Root
+            checked={isMonitorClipboard}
+            onCheckedChange={(d) => set_isMonitorclipboard(d.checked)}
+          >
+            <Switch.HiddenInput />
+            <Switch.Control />
+            <Switch.Label>Monitor clipboard</Switch.Label>
           </Switch.Root>
         </div>
       </form>

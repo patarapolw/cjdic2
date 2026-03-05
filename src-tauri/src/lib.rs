@@ -12,6 +12,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .setup(|app| {
             let app_dir = app.path().app_config_dir()?;
             create_dir_all(&app_dir)?;
@@ -34,12 +35,6 @@ pub fn run() {
             execute_sql,
             download_url,
         ])
-        .build(tauri::generate_context!())
-        .expect("error while running tauri application")
-        .run(|_app_handle, event| match event {
-            // On exit handler should be avoided for mobile
-            // and rusqlite already closes gracefully by default
-            tauri::RunEvent::ExitRequested { .. } => {}
-            _ => {}
-        });
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }

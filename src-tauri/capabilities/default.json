@@ -9,6 +9,7 @@
     "core:default",
     "opener:default",
     "http:default",
-    "fs:default"
+    "fs:default",
+    "clipboard-manager:allow-read-text"
   ]
 }
