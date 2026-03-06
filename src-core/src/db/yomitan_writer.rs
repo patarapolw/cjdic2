@@ -155,6 +155,7 @@ impl YomitanWriter {
             CREATE INDEX IF NOT EXISTS dictionaries_lang ON dictionaries (lang);
 
             CREATE INDEX IF NOT EXISTS terms_dict_id ON terms (dict_id);
+            CREATE INDEX IF NOT EXISTS terms_term_norm ON terms (term_norm);
             CREATE INDEX IF NOT EXISTS terms_reading ON terms (reading);
             CREATE INDEX IF NOT EXISTS terms_term_reading_score ON terms(term, reading, score DESC);
 

@@ -6,7 +6,7 @@ use crate::{
     db::{Database, yomitan_writer::normalize_term},
 };
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct YomitanRow {
     term: String,
     reading: String,
@@ -56,10 +56,55 @@ impl YomitanDatabase {
         new_t.push_str(&normalize_term(&new_seg));
 
         let q_term_norm = new_t;
+        let conn = self.db.conn.lock().unwrap();
 
-        // TODO: consider using = if not GLOB string
-        let sql = format!(
-            r#"
+        conn.execute_batch(
+            "
+            CREATE TEMP TABLE IF NOT EXISTS yomitan_lookup_keys (
+                term,
+                reading,
+                score,
+                title,
+                glossary_id,
+                def_tags_id,
+                rules_id,
+                term_tags_id,
+                sequence
+            );
+            DELETE FROM yomitan_lookup_keys;
+        ",
+        )?;
+        // let _timer = Timer::new(format!("search_yomitan: {} {}", q_term, q_reading));
+
+        conn.execute(
+            &format!(
+                "
+            INSERT INTO yomitan_lookup_keys
+            SELECT
+                t.term,
+                t.reading,
+                t.score,
+                d.title,
+                t.glossary_id,
+                t.def_tags_id,
+                rules_id,
+                term_tags_id,
+                sequence
+            FROM yomitan.terms                t
+            JOIN yomitan.view_terms_term_rank tr ON tr.term = t.term AND tr.reading = t.reading
+            JOIN yomitan.dictionaries         d  ON d.id  = t.dict_id
+            WHERE t.term_norm GLOB ?1 {} t.reading GLOB ?2
+            ORDER BY tr.max_score DESC, d.sort_order DESC
+            LIMIT ?3 OFFSET ?4
+        ",
+                and_or
+            ),
+            params![q_term_norm, q_reading, limit, offset],
+        )?;
+        // let _timer = Timer::new(format!("search_yomitan: {} {}", q_term, q_reading));
+
+        let mut stmt = conn.prepare(
+            "
         SELECT
             t.term,
             t.reading,
@@ -69,25 +114,15 @@ impl YomitanDatabase {
             g.content               AS glossary_json,
             t.sequence,
             COALESCE(tt.tags,  '')  AS term_tags,
-            d.title                 AS dict_title
-        FROM yomitan.terms              t
-        JOIN yomitan.view_terms_term_rank tr ON tr.term = t.term AND tr.reading = t.reading
+            t.title                 AS dict_title
+        FROM yomitan_lookup_keys t
         JOIN yomitan.glossaries         g  ON g.id  = t.glossary_id
-        JOIN yomitan.dictionaries       d  ON d.id  = t.dict_id
         LEFT JOIN yomitan.def_tag_sets  dt ON dt.id = t.def_tags_id
         LEFT JOIN yomitan.rule_sets     r  ON r.id  = t.rules_id
         LEFT JOIN yomitan.term_tag_sets tt ON tt.id = t.term_tags_id
-        WHERE t.term_norm GLOB ?1 {} t.reading GLOB ?2
-        ORDER BY tr.max_score DESC, d.sort_order DESC
-        LIMIT ?3 OFFSET ?4
-        "#,
-            and_or
-        );
-
-        let conn = self.db.conn.lock().unwrap();
-
-        let mut stmt = conn.prepare(&sql)?;
-        let rows = stmt.query_map(params![q_term_norm, q_reading, limit, offset], |r| {
+        ",
+        )?;
+        let rows = stmt.query_map(params![], |r| {
             Ok(YomitanRow {
                 term: r.get(0)?,
                 reading: r.get(1)?,
