@@ -6,4 +6,6 @@
 /tauri.properties
 
 /src/main/assets/**/*.zip
+/src/main/assets/**/*.zst
+/src/main/assets/**/*.db
 /src/main/assets/**/manifest.json

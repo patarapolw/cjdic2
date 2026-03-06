@@ -5,5 +5,5 @@ pub fn get_db_dir() -> PathBuf {
 }
 
 pub fn get_vibrato_dict_dir() -> PathBuf {
-    PathBuf::from("src-tauri/resources/ipadic-mecab/system.dic.zst")
+    PathBuf::from("src-tauri/resources/naist-jdic-mecab/system.dic.zst")
 }

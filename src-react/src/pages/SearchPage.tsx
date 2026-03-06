@@ -53,7 +53,7 @@ function SearchPage() {
     if (!isMonitorClipboard) return;
 
     const intervalId = setInterval(async () => {
-      const newText = await readText();
+      const newText = (await readText()).replace(/ /g, "");
 
       set_clipboardText((clipboardText) => {
         if (clipboardText !== newText) {
@@ -134,7 +134,7 @@ function SearchPage() {
     });
 
     if (isNew) {
-      if (!result.length && !isFromSplit && ender === "" && q.length > 2) {
+      if (!result.length && !isFromSplit && /^[^ ]{3,} $/.test(q)) {
         const segs = await invoke<{ surface: string }[]>("tokenize", {
           text: q,
         });

@@ -21,7 +21,7 @@ pub fn run() {
             let dict_path = {
                 // Resolve the resource path (returns asset://localhost/ URI on Android)
                 let resource_path = app.path().resolve(
-                    "resources/ipadic-mecab/system.dic.zst",
+                    "resources/naist-jdic-mecab/system.dic.zst",
                     tauri::path::BaseDirectory::Resource,
                 )?;
 
