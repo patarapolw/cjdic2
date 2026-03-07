@@ -13,7 +13,9 @@ use crate::common::get_vibrato_dict_dir;
 
 fn main() -> Result<(), anyhow::Error> {
     let service = AppService::new(get_db_dir(), get_vibrato_dict_dir())?;
-    let mut writer = service.get_yomitan_writer()?;
+    let mut writer = service.get_yomitan_writer(|p| {
+        println!("{:?}", p);
+    })?;
 
     let zip_dir = Path::new("src-tauri/resources/yomitan");
     println!("zip_dir: {:?}", absolute(zip_dir)); // Relative to workspace root

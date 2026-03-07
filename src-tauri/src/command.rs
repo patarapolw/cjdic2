@@ -97,7 +97,9 @@ pub async fn import_yomitan_dict(
     data_dir.push(lang);
     data_dir.push(bundle_name);
 
-    let mut writer = state.get_yomitan_writer()?;
+    let mut writer = state.get_yomitan_writer(|r| {
+        app.emit("yomitan-import-progress", r).unwrap();
+    })?;
     AppService::import_yomitan_zip_file(&mut writer, &data_dir, lang, |r| {
         app.emit("yomitan-import-progress", r).unwrap();
     })
@@ -105,11 +107,14 @@ pub async fn import_yomitan_dict(
 
 #[tauri::command]
 pub async fn remove_yomitan_dict(
+    app: AppHandle,
     bundle_name: &str,
     lang: &str,
     state: tauri::State<'_, AppService>,
 ) -> Result<(), CJDicError> {
-    let mut writer = state.get_yomitan_writer()?;
+    let mut writer = state.get_yomitan_writer(|r| {
+        app.emit("yomitan-import-progress", r).unwrap();
+    })?;
     AppService::remove_yomitan_dictionary(&mut writer, bundle_name, lang)
 }
 

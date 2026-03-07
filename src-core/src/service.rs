@@ -11,7 +11,7 @@ use vibrato::{Dictionary, Tokenizer};
 use crate::{
     Timer, ZipSource,
     db::{
-        Database, YOMITAN_DBFILE, YomitanRow, YomitanWriter, YomitanZipImportProgress,
+        Database, YOMITAN_DBFILE, YomitanProgress, YomitanRow, YomitanWriter,
         YomitanZipImportResult,
     },
     error::CJDicError,
@@ -149,17 +149,12 @@ impl AppService {
             .search_yomitan(q_term, q_reading, limit, offset)?)
     }
 
-    pub fn get_yomitan_writer(&self) -> Result<YomitanWriter, CJDicError> {
-        let conn = Connection::open(self.db.dir.join(YOMITAN_DBFILE))?;
-        let mut writer = YomitanWriter::new(conn)?;
-        writer.create_schema()?;
-        Ok(writer)
-    }
-
-    pub fn cleanup_yomitan_writer(&self) -> Result<YomitanWriter, CJDicError> {
-        let conn = Connection::open(self.db.dir.join(YOMITAN_DBFILE))?;
-        let writer = YomitanWriter::new(conn)?;
-        writer.cleanup()?;
+    pub fn get_yomitan_writer(
+        &self,
+        progress_callback: impl Fn(YomitanProgress),
+    ) -> Result<YomitanWriter, CJDicError> {
+        let mut writer = YomitanWriter::new(self.db.dir.clone())?;
+        writer.create_schema(&progress_callback)?;
         Ok(writer)
     }
 
@@ -173,7 +168,7 @@ impl AppService {
     where
         Z: ZipSource,
         LoadCallback: Fn(LoadYomitanZipDirResult),
-        ImportCallback: Fn(YomitanZipImportProgress),
+        ImportCallback: Fn(YomitanProgress),
     {
         let mut dir_zip_map: HashMap<String, &Z> = HashMap::new();
         let mut zip_dir_ord: HashMap<String, usize> = HashMap::new();
@@ -184,17 +179,13 @@ impl AppService {
             zip_dir_ord.insert(filename.to_string(), i);
         }
 
-        {
-            let conn = Connection::open(self.db.dir.join(YOMITAN_DBFILE))?;
-            let mut writer = YomitanWriter::new(conn)?;
-            writer.create_schema()?;
-        }
-
         let mut new_dicts: Vec<String> = vec![];
         let mut to_be_removed_dicts: Vec<String> = vec![];
 
-        {
-            let conn = Connection::open(self.db.dir.join(YOMITAN_DBFILE))?;
+        let db_path = self.db.dir.join(YOMITAN_DBFILE);
+
+        if db_path.exists() {
+            let conn = Connection::open(&db_path)?;
             let mut stmt =
                 conn.prepare("SELECT DISTINCT bundle_name FROM dictionaries WHERE lang = ?1")?;
             let mut rows = stmt.query([lang])?;
@@ -228,7 +219,12 @@ impl AppService {
         });
 
         {
-            let conn = Connection::open(self.db.dir.join(YOMITAN_DBFILE))?;
+            let mut writer = YomitanWriter::new(self.db.dir.clone())?;
+            writer.create_schema(&import_callback)?;
+        }
+
+        {
+            let conn = Connection::open(&db_path)?;
             for z in to_be_removed_dicts.clone().iter() {
                 conn.execute(
                     "DELETE FROM dictionaries WHERE bundle_name = ?1 AND lang = ?2",
@@ -238,8 +234,7 @@ impl AppService {
         }
 
         {
-            let conn = Connection::open(self.db.dir.join(YOMITAN_DBFILE))?;
-            let mut writer = YomitanWriter::new(conn)?;
+            let mut writer = YomitanWriter::new(self.db.dir.clone())?;
 
             for z in new_dicts.clone().iter() {
                 if let Some(zip_file) = dir_zip_map.get(z) {
@@ -262,7 +257,7 @@ impl AppService {
     ) -> Result<YomitanZipImportResult, CJDicError>
     where
         Z: ZipSource,
-        Callback: Fn(YomitanZipImportProgress),
+        Callback: Fn(YomitanProgress),
     {
         Ok(writer.import_dictionary_zip_file(zip_file, lang, progress_callback)?)
     }

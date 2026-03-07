@@ -11,7 +11,9 @@ fn main() -> Result<(), anyhow::Error> {
 
     {
         let _timer = Timer::new("remove one".to_string());
-        let mut writer = service.get_yomitan_writer()?;
+        let mut writer = service.get_yomitan_writer(|p| {
+            println!("{:?}", p);
+        })?;
         AppService::remove_yomitan_dictionary(&mut writer, "JMnedict.zip", "ja")?;
     }
 

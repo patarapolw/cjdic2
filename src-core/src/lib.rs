@@ -3,7 +3,7 @@ mod error;
 mod service;
 mod util;
 
-pub use db::{YomitanRow, YomitanZipImportProgress, YomitanZipImportResult, ZipSource};
+pub use db::{YomitanProgress, YomitanRow, YomitanZipImportResult, ZipSource};
 pub use error::CJDicError;
 pub use service::{AppService, SqlParam, TokenizeSegment};
 pub use util::Timer;

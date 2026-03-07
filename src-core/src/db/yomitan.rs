@@ -1,5 +1,6 @@
 use rusqlite::{Result, params};
 use serde::Serialize;
+use zstd::bulk::Decompressor;
 
 use crate::{
     CJDicError, Timer,
@@ -14,6 +15,7 @@ pub struct YomitanRow {
     rules: String,
     score: i64,
     glossary_json: String,
+    glossary_b: Vec<u8>,
     sequence: Option<i64>,
     term_tags: String,
     dict_title: String,
@@ -28,6 +30,19 @@ impl YomitanDatabase {
         Self { db }
     }
 
+    fn decompressor(&self) -> Result<Decompressor<'_>, CJDicError> {
+        let conn = self.db.conn.lock().unwrap();
+
+        let row = conn.query_row(
+            "SELECT value FROM glossary.meta WHERE key = 'zstd_dict'",
+            [],
+            |r| r.get::<_, Vec<u8>>(0),
+        )?;
+
+        let decompressor = zstd::bulk::Decompressor::with_dictionary(&row)?;
+        Ok(decompressor)
+    }
+
     pub fn search_yomitan(
         &self,
         q_term: &str,
@@ -36,6 +51,11 @@ impl YomitanDatabase {
         offset: u32,
     ) -> Result<Vec<YomitanRow>, CJDicError> {
         let _timer = Timer::new(format!("search_yomitan: {} {}", q_term, q_reading));
+
+        // must be run before self.db.conn.lock()
+        let mut decompressor = self.decompressor()?;
+        // max decompressed: 90KB  (compression ratio on largest: ~2.5x)
+        const MAX_DECOMPRESSED_SIZE: usize = 512 * 1024; // 512KB, ~5x headroom
 
         let and_or = if q_term == q_reading { "OR" } else { "AND" };
 
@@ -60,7 +80,6 @@ impl YomitanDatabase {
         let eq2 = if q_reading.len() > 0 { "GLOB" } else { "=" };
 
         let conn = self.db.conn.lock().unwrap();
-
         conn.execute_batch(
             "
             CREATE TEMP TABLE IF NOT EXISTS yomitan_lookup_keys (
@@ -104,7 +123,7 @@ impl YomitanDatabase {
         // still the most time bottleneck step, several seconds
         conn.execute(&sql_string, params![q_term_norm, q_reading, limit, offset])?;
 
-        // let _timer = Timer::new(format!("search_yomitan: {} {}", q_term, q_reading));
+        let _timer = Timer::new(format!("search_yomitan: {} {}", q_term, q_reading));
         let mut stmt = conn.prepare(
             "
             SELECT
@@ -113,12 +132,12 @@ impl YomitanDatabase {
                 COALESCE(dt.tags,  '')  AS def_tags,
                 COALESCE(r.rules,  '')  AS rules,
                 t.score,
-                g.content               AS glossary_json,
+                COALESCE(g.b, '[]')     AS glossary,
                 t.sequence,
                 COALESCE(tt.tags,  '')  AS term_tags,
                 t.title                 AS dict_title
             FROM yomitan_lookup_keys t
-            JOIN yomitan.glossaries         g  ON g.id  = t.glossary_id
+            LEFT JOIN glossary.glossaries    g  ON g.id  = t.glossary_id
             LEFT JOIN yomitan.def_tag_sets  dt ON dt.id = t.def_tags_id
             LEFT JOIN yomitan.rule_sets     r  ON r.id  = t.rules_id
             LEFT JOIN yomitan.term_tag_sets tt ON tt.id = t.term_tags_id
@@ -131,7 +150,8 @@ impl YomitanDatabase {
                 def_tags: r.get(2)?,
                 rules: r.get(3)?,
                 score: r.get(4)?,
-                glossary_json: r.get(5)?,
+                glossary_json: String::new(),
+                glossary_b: r.get(5)?,
                 sequence: r.get(6)?,
                 term_tags: r.get(7)?,
                 dict_title: r.get(8)?,
@@ -139,8 +159,13 @@ impl YomitanDatabase {
         })?;
 
         let mut out = Vec::new();
-        for r in rows {
-            out.push(r?);
+        for row in rows {
+            let mut r = row?;
+            r.glossary_json =
+                String::from_utf8(decompressor.decompress(&r.glossary_b, MAX_DECOMPRESSED_SIZE)?)?;
+            r.glossary_b = vec![];
+
+            out.push(r);
         }
         Ok(out)
     }

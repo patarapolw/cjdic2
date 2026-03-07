@@ -1,3 +1,5 @@
+use std::string::FromUtf8Error;
+
 use serde::Serialize;
 use thiserror::Error;
 use vibrato::errors::VibratoError;
@@ -27,6 +29,9 @@ pub enum CJDicError {
     #[error("Vibrato error: {0}")]
     VibratoError(String),
 
+    #[error("FromUtf8Error: {0}")]
+    FromUtf8Error(String),
+
     #[error("Not found")]
     NotFound,
 
@@ -36,42 +41,49 @@ pub enum CJDicError {
 
 impl From<rusqlite::Error> for CJDicError {
     fn from(e: rusqlite::Error) -> Self {
-        log::error!("{e:#}");
+        eprintln!("{e:#}");
         CJDicError::Database(e.to_string())
     }
 }
 
 impl From<serde_json::Error> for CJDicError {
     fn from(e: serde_json::Error) -> Self {
-        log::error!("{e:#}");
+        eprintln!("{e:#}");
         CJDicError::Serialization(e.to_string())
     }
 }
 
 impl From<anyhow::Error> for CJDicError {
     fn from(e: anyhow::Error) -> Self {
-        log::error!("{e:#}");
+        eprintln!("{e:#}");
         CJDicError::AnyhowError(e.to_string())
     }
 }
 
 impl From<std::io::Error> for CJDicError {
     fn from(e: std::io::Error) -> Self {
-        log::error!("{e:#}");
+        eprintln!("{e:#}");
         CJDicError::IOError(e.to_string())
     }
 }
 
 impl From<ZipError> for CJDicError {
     fn from(e: ZipError) -> Self {
-        log::error!("{e:#}");
+        eprintln!("{e:#}");
         CJDicError::ZipError(e.to_string())
     }
 }
 
 impl From<VibratoError> for CJDicError {
     fn from(e: VibratoError) -> Self {
-        log::error!("{e:#}");
+        eprintln!("{e:#}");
         CJDicError::VibratoError(e.to_string())
+    }
+}
+
+impl From<FromUtf8Error> for CJDicError {
+    fn from(e: FromUtf8Error) -> Self {
+        eprintln!("{e:#}");
+        CJDicError::FromUtf8Error(e.to_string())
     }
 }

@@ -11,7 +11,9 @@ fn main() -> Result<(), anyhow::Error> {
 
     {
         let _timer = Timer::new("update schema".to_string());
-        service.get_yomitan_writer()?;
+        service.get_yomitan_writer(|p| {
+            println!("{:?}", p);
+        })?;
     }
 
     Ok(())
