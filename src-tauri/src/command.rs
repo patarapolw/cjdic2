@@ -1,4 +1,5 @@
 use std::{
+    cell::Cell,
     fs::{File, remove_file},
     path::PathBuf,
 };
@@ -25,9 +26,6 @@ pub async fn init_yomitan(
     lang: String,
     state: tauri::State<'_, AppService>,
 ) -> Result<(), CJDicError> {
-    let mut new_dicts: Vec<String> = vec![];
-    let mut to_be_removed_dicts: Vec<String> = vec![];
-
     let app_dir = app
         .path()
         .app_data_dir()
@@ -56,25 +54,23 @@ pub async fn init_yomitan(
         .map(|d| app_dir.join(&d.filepath))
         .collect();
 
-    let mut r = state.load_yomitan_zip_dir(
+    let update_count = Cell::new(0usize);
+
+    state.load_yomitan_zip_dir(
         zip_files,
         lang.as_str(),
         |r| {
+            update_count.set(update_count.get() + r.new_dicts.len() + r.to_be_removed_dicts.len());
             app.emit("load-yomitan-dir", r).unwrap();
         },
         |r| {
+            update_count.set(update_count.get() + 1);
             app.emit("yomitan-import-progress", r).unwrap();
         },
     )?;
 
-    new_dicts.append(&mut r.new_dicts);
-    to_be_removed_dicts.append(&mut r.to_be_removed_dicts);
-
-    if new_dicts.len() + to_be_removed_dicts.len() > 0 {
-        println!("Imported {:?}", new_dicts);
-        println!("Removed {:?}", to_be_removed_dicts);
+    if update_count.get() > 0 {
         println!("Request app restart?",);
-
         // Request app restart anyway
         app.request_restart();
     }

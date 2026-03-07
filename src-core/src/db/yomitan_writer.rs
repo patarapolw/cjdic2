@@ -176,7 +176,7 @@ impl YomitanWriter {
         self.create_materialized_views()?;
         self.attach_glossary()?;
 
-        let schema_version = "2";
+        let schema_version = "2026-03-07";
 
         let current_schema_version = {
             let mut stmt = self
@@ -193,7 +193,7 @@ impl YomitanWriter {
                     .query_row("SELECT MAX(id) FROM glossaries", [], |r| r.get::<_, i64>(0))?
                     as usize;
 
-                let message = &format!("migrate to {}", YOMITAN_GLOSSARY_DBFILE);
+                let message = &format!("Migrate to {}", YOMITAN_GLOSSARY_DBFILE);
                 progress_callback(YomitanProgress {
                     message: message.to_string(),
                     current: 0,
@@ -232,14 +232,28 @@ impl YomitanWriter {
                                 message: message.to_string(),
                                 current: i,
                                 total,
-                                steps: 0,
+                                steps: i,
                             });
                         }
                     }
                 }
                 tx.commit()?;
 
+                progress_callback(YomitanProgress {
+                    message: message.to_string(),
+                    current: total,
+                    total,
+                    steps: total,
+                });
+
                 self.hash_glossary()?;
+
+                progress_callback(YomitanProgress {
+                    message: "Cleaning up old glossary".to_string(),
+                    current: 0,
+                    total: 0,
+                    steps: total,
+                });
 
                 let _timer = Timer::new(format!("cleanup for {}", YOMITAN_GLOSSARY_DBFILE));
                 self.conn.execute_batch(
@@ -250,9 +264,11 @@ impl YomitanWriter {
                 )?;
             }
 
-            self.conn
-                .prepare("UPDATE schema_meta SET value = ?2 WHERE key = ?1")?
-                .execute(["schema_version", schema_version])?;
+            if v < schema_version.to_string() {
+                self.conn
+                    .prepare("UPDATE schema_meta SET value = ?2 WHERE key = ?1")?
+                    .execute(["schema_version", schema_version])?;
+            }
         } else {
             self.conn
                 .prepare("INSERT INTO schema_meta (key, value) VALUES (?1, ?2)")?

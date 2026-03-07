@@ -34,6 +34,7 @@ interface Progress {
   message: string;
   current?: number;
   total?: number;
+  unit?: string;
 }
 
 function LoadingDialog() {
@@ -139,9 +140,10 @@ function LoadingDialog() {
 
     listen<DownloadProgress>("download-url-progress", ({ payload }) => {
       updateProgress({
-        message: `Downloading ${payload.filepath} (MiB)`,
+        message: `Downloading ${payload.filepath}`,
         current: payload.downloaded >> 20,
         total: payload.content_length >> 20,
+        unit: "MiB",
       });
     });
   }, []);
@@ -175,7 +177,7 @@ function LoadingDialog() {
                 ? messages.map((m, i) => (
                     <p key={i}>
                       {m.total
-                        ? `${m.message} (${m.current}/${m.total})`
+                        ? `${m.message} (${(m.current || 0).toLocaleString()}/${m.total.toLocaleString()}${m.unit ? ` ${m.unit}` : ""})`
                         : m.message}
                     </p>
                   ))
