@@ -1,5 +1,9 @@
-use std::string::FromUtf8Error;
+use std::{
+    string::FromUtf8Error,
+    sync::{MutexGuard, PoisonError},
+};
 
+use rusqlite::Connection;
 use serde::Serialize;
 use thiserror::Error;
 use vibrato::errors::VibratoError;
@@ -31,6 +35,9 @@ pub enum CJDicError {
 
     #[error("FromUtf8Error: {0}")]
     FromUtf8Error(String),
+
+    #[error("ConnectionMutexGuardError: {0}")]
+    ConnectionMutexGuardError(String),
 
     #[error("Not found")]
     NotFound,
@@ -85,5 +92,12 @@ impl From<FromUtf8Error> for CJDicError {
     fn from(e: FromUtf8Error) -> Self {
         eprintln!("{e:#}");
         CJDicError::FromUtf8Error(e.to_string())
+    }
+}
+
+impl From<PoisonError<MutexGuard<'_, Connection>>> for CJDicError {
+    fn from(e: PoisonError<MutexGuard<'_, Connection>>) -> Self {
+        eprintln!("{e:#}");
+        CJDicError::ConnectionMutexGuardError(e.to_string())
     }
 }

@@ -91,7 +91,7 @@ impl AppService {
     ) -> Result<serde_json::Value, CJDicError> {
         let _timer = Timer::new(sql.to_string());
 
-        let conn = self.db.conn.lock().unwrap();
+        let conn = self.db.conn.lock()?;
         let converted_params: Vec<_> = params
             .into_iter()
             .map(|p| match p {

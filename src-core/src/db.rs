@@ -7,15 +7,18 @@ use std::{
     },
 };
 
-use anyhow::{Ok, Result};
 use enum_map::EnumMap;
 use rusqlite::Connection;
+
+mod search;
 
 mod yomitan;
 pub use yomitan::YomitanRow;
 
 mod yomitan_writer;
 pub use yomitan_writer::{YomitanProgress, YomitanWriter, YomitanZipImportResult, ZipSource};
+
+use crate::CJDicError;
 
 #[derive(Clone)]
 pub(crate) struct Database {
@@ -28,28 +31,28 @@ pub(crate) struct Database {
 pub(crate) enum DbChild {
     Yomitan,
     YomitanGlossary,
-    Reading,
+    Search,
 }
 
 const USER_DBFILE: &str = "user.db";
 
-pub(crate) const DBFILE: LazyLock<EnumMap<DbChild, &str>> = LazyLock::new(|| {
+pub(crate) static DBFILE: LazyLock<EnumMap<DbChild, &str>> = LazyLock::new(|| {
     enum_map! {
         DbChild::Yomitan => "yomitan.db",
         DbChild::YomitanGlossary => "yomitan-glossary.db",
-        DbChild::Reading => "reading.db"
+        DbChild::Search => "reading.db"
     }
 });
-pub(crate) const DBSCHEMA: LazyLock<EnumMap<DbChild, &str>> = LazyLock::new(|| {
+pub(crate) static DBSCHEMA: LazyLock<EnumMap<DbChild, &str>> = LazyLock::new(|| {
     enum_map! {
         DbChild::Yomitan => "yomitan",
         DbChild::YomitanGlossary => "glossary",
-        DbChild::Reading => "reading"
+        DbChild::Search => "reading"
     }
 });
 
 impl Database {
-    pub fn new(db_dir: impl AsRef<Path>) -> Result<Self> {
+    pub fn new(db_dir: impl AsRef<Path>) -> Result<Self, CJDicError> {
         let dir = db_dir.as_ref().to_path_buf();
         let conn = Connection::open(dir.join(USER_DBFILE))?;
 
@@ -68,24 +71,24 @@ impl Database {
             is_db_attached: enum_map! {
                 DbChild::Yomitan => Arc::new(AtomicBool::new(false)),
                 DbChild::YomitanGlossary => Arc::new(AtomicBool::new(false)),
-                DbChild::Reading => Arc::new(AtomicBool::new(false)),
+                DbChild::Search => Arc::new(AtomicBool::new(false)),
             },
         })
     }
 
-    pub fn yomitan(&self) -> Result<yomitan::YomitanDatabase> {
+    pub fn yomitan(&self) -> Result<yomitan::YomitanDatabase, CJDicError> {
         self.ensure_db_attached(DbChild::Yomitan)?;
         self.ensure_db_attached(DbChild::YomitanGlossary)?;
-        self.ensure_db_attached(DbChild::Reading)?;
+        self.ensure_db_attached(DbChild::Search)?;
         Ok(yomitan::YomitanDatabase::new(self.clone()))
     }
 
-    fn ensure_db_attached(&self, db_child: DbChild) -> Result<()> {
+    fn ensure_db_attached(&self, db_child: DbChild) -> Result<(), CJDicError> {
         if self.is_db_attached[db_child].load(Ordering::Acquire) {
             return Ok(());
         }
 
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock()?;
         let is_attached = self.is_db_attached[db_child].load(Ordering::Relaxed);
 
         if !is_attached {

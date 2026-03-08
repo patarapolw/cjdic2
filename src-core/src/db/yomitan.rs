@@ -31,7 +31,7 @@ impl YomitanDatabase {
     }
 
     fn decompressor(&self) -> Result<Decompressor<'_>, CJDicError> {
-        let conn = self.db.conn.lock().unwrap();
+        let conn = self.db.conn.lock()?;
 
         let row = conn.query_row(
             "SELECT value FROM glossary.meta WHERE key = 'zstd_dict'",
@@ -79,7 +79,7 @@ impl YomitanDatabase {
         let eq1 = if q_term_norm.len() > 0 { "GLOB" } else { "=" };
         let eq2 = if q_reading.len() > 0 { "GLOB" } else { "=" };
 
-        let conn = self.db.conn.lock().unwrap();
+        let conn = self.db.conn.lock()?;
         conn.execute_batch(
             "
             CREATE TEMP TABLE IF NOT EXISTS yomitan_lookup_keys (

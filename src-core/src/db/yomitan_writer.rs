@@ -13,7 +13,7 @@ use zip::ZipArchive;
 
 use crate::{
     CJDicError, Timer,
-    db::{DBFILE, DbChild},
+    db::{DBFILE, DBSCHEMA, DbChild},
 };
 
 fn blake3_hex(s: &str) -> String {
@@ -174,7 +174,8 @@ impl YomitanWriter {
         )?;
 
         self.create_materialized_views()?;
-        self.attach_glossary()?;
+        self.attach_db(DbChild::YomitanGlossary)?;
+        self.attach_db(DbChild::Search)?;
 
         let schema_version = "2026-03-07";
 
@@ -361,7 +362,7 @@ impl YomitanWriter {
         Ok(())
     }
 
-    fn attach_glossary(&mut self) -> Result<(), CJDicError> {
+    fn attach_db(&mut self, db_child: DbChild) -> Result<(), CJDicError> {
         let dir = self.dir.clone();
         let path = if self.dir.is_absolute() {
             dir
@@ -369,8 +370,8 @@ impl YomitanWriter {
             current_dir()?.join(dir)
         };
 
-        let db_file = DBFILE[DbChild::YomitanGlossary];
-        let schema_name = "glossary";
+        let db_file = DBFILE[db_child];
+        let schema_name = DBSCHEMA[db_child];
 
         let path = path.join(db_file).to_string_lossy().replace(r"\", r"/");
 
@@ -392,7 +393,10 @@ impl YomitanWriter {
             schema_name
         ))?;
 
-        self.create_schema_glossary()?;
+        match db_child {
+            DbChild::YomitanGlossary => self.create_schema_glossary()?,
+            _ => (),
+        }
 
         Ok(())
     }
@@ -529,7 +533,7 @@ impl YomitanWriter {
             }
         }
 
-        self.attach_glossary()?;
+        self.attach_db(DbChild::YomitanGlossary)?;
 
         {
             let tx = self.conn.transaction()?;
