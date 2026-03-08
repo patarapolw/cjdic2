@@ -13,7 +13,7 @@ use zip::ZipArchive;
 
 use crate::{
     CJDicError, Timer,
-    db::{YOMITAN_DBFILE, YOMITAN_GLOSSARY_DBFILE},
+    db::{DBFILE, DbChild},
 };
 
 fn blake3_hex(s: &str) -> String {
@@ -65,7 +65,7 @@ pub struct YomitanWriter {
 impl YomitanWriter {
     pub fn new(db_dir: impl AsRef<Path>) -> Result<Self> {
         let dir = db_dir.as_ref().to_path_buf();
-        let conn = Connection::open(dir.join(YOMITAN_DBFILE))?;
+        let conn = Connection::open(dir.join(DBFILE[DbChild::Yomitan]))?;
 
         conn.execute_batch(
             "
@@ -193,7 +193,7 @@ impl YomitanWriter {
                     .query_row("SELECT MAX(id) FROM glossaries", [], |r| r.get::<_, i64>(0))?
                     as usize;
 
-                let message = &format!("Migrate to {}", YOMITAN_GLOSSARY_DBFILE);
+                let message = &format!("Migrate to {}", DBFILE[DbChild::YomitanGlossary]);
                 progress_callback(YomitanProgress {
                     message: message.to_string(),
                     current: 0,
@@ -255,7 +255,8 @@ impl YomitanWriter {
                     steps: total,
                 });
 
-                let _timer = Timer::new(format!("cleanup for {}", YOMITAN_GLOSSARY_DBFILE));
+                let _timer =
+                    Timer::new(format!("cleanup for {}", DBFILE[DbChild::YomitanGlossary]));
                 self.conn.execute_batch(
                     "
                     UPDATE glossaries SET content = '[]';
@@ -368,7 +369,7 @@ impl YomitanWriter {
             current_dir()?.join(dir)
         };
 
-        let db_file = YOMITAN_GLOSSARY_DBFILE;
+        let db_file = DBFILE[DbChild::YomitanGlossary];
         let schema_name = "glossary";
 
         let path = path.join(db_file).to_string_lossy().replace(r"\", r"/");

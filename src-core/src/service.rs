@@ -11,7 +11,7 @@ use vibrato::{Dictionary, Tokenizer};
 use crate::{
     Timer, ZipSource,
     db::{
-        Database, YOMITAN_DBFILE, YomitanProgress, YomitanRow, YomitanWriter,
+        DBFILE, Database, DbChild, YomitanProgress, YomitanRow, YomitanWriter,
         YomitanZipImportResult,
     },
     error::CJDicError,
@@ -182,7 +182,7 @@ impl AppService {
         let mut new_dicts: Vec<String> = vec![];
         let mut to_be_removed_dicts: Vec<String> = vec![];
 
-        let db_path = self.db.dir.join(YOMITAN_DBFILE);
+        let db_path = self.db.dir.join(DBFILE[DbChild::Yomitan]);
 
         if db_path.exists() {
             let conn = Connection::open(&db_path)?;

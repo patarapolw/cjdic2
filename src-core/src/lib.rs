@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate enum_map;
+
 mod db;
 mod error;
 mod service;
