@@ -6,7 +6,7 @@ use std::{
 use rusqlite::Connection;
 use serde::Serialize;
 use thiserror::Error;
-use vibrato::errors::VibratoError;
+use vibrato::{Tokenizer, errors::VibratoError};
 use zip::result::ZipError;
 
 #[derive(Debug, Error, Serialize)]
@@ -38,6 +38,9 @@ pub enum CJDicError {
 
     #[error("ConnectionMutexGuardError: {0}")]
     ConnectionMutexGuardError(String),
+
+    #[error("TokenizerMutexGuardError: {0}")]
+    TokenizerMutexGuardError(String),
 
     #[error("Not found")]
     NotFound,
@@ -99,5 +102,12 @@ impl From<PoisonError<MutexGuard<'_, Connection>>> for CJDicError {
     fn from(e: PoisonError<MutexGuard<'_, Connection>>) -> Self {
         eprintln!("{e:#}");
         CJDicError::ConnectionMutexGuardError(e.to_string())
+    }
+}
+
+impl From<PoisonError<MutexGuard<'_, Tokenizer>>> for CJDicError {
+    fn from(e: PoisonError<MutexGuard<'_, Tokenizer>>) -> Self {
+        eprintln!("{e:#}");
+        CJDicError::TokenizerMutexGuardError(e.to_string())
     }
 }

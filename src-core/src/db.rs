@@ -40,14 +40,14 @@ pub(crate) static DBFILE: LazyLock<EnumMap<DbChild, &str>> = LazyLock::new(|| {
     enum_map! {
         DbChild::Yomitan => "yomitan.db",
         DbChild::YomitanGlossary => "yomitan-glossary.db",
-        DbChild::Search => "reading.db"
+        DbChild::Search => "search.db"
     }
 });
 pub(crate) static DBSCHEMA: LazyLock<EnumMap<DbChild, &str>> = LazyLock::new(|| {
     enum_map! {
         DbChild::Yomitan => "yomitan",
         DbChild::YomitanGlossary => "glossary",
-        DbChild::Search => "reading"
+        DbChild::Search => "search"
     }
 });
 

@@ -111,10 +111,11 @@ impl YomitanDatabase {
                 rules_id,
                 term_tags_id,
                 sequence
-            FROM yomitan.terms                t
+            FROM search.terms                 s
+            JOIN yomitan.terms                t  ON t.id = s.id
             JOIN yomitan.view_terms_term_rank tr ON tr.term = t.term AND tr.reading = t.reading
             JOIN yomitan.dictionaries         d  ON d.id  = t.dict_id
-            WHERE t.term_norm {eq1} ?1 {and_or} t.reading {eq2} ?2
+            WHERE s.term {eq1} ?1 {and_or} s.reading {eq2} ?2
             ORDER BY tr.max_score DESC, d.sort_order DESC
             LIMIT ?3 OFFSET ?4
         "

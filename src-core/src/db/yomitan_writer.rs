@@ -13,7 +13,10 @@ use zip::ZipArchive;
 
 use crate::{
     CJDicError, Timer,
-    db::{DBFILE, DBSCHEMA, DbChild},
+    db::{
+        DBFILE, DBSCHEMA, DbChild,
+        search::{SearchDatabase, normalize_reading},
+    },
 };
 
 fn blake3_hex(s: &str) -> String {
@@ -177,7 +180,7 @@ impl YomitanWriter {
         self.attach_db(DbChild::YomitanGlossary)?;
         self.attach_db(DbChild::Search)?;
 
-        let schema_version = "2026-03-07";
+        let schema_version = "2026-03-08";
 
         let current_schema_version = {
             let mut stmt = self
@@ -188,7 +191,8 @@ impl YomitanWriter {
         };
 
         if let Some(v) = current_schema_version {
-            if v < "2".to_string() {
+            let v = v.as_str();
+            if v < "2" {
                 let total = self
                     .conn
                     .query_row("SELECT MAX(id) FROM glossaries", [], |r| r.get::<_, i64>(0))?
@@ -266,7 +270,60 @@ impl YomitanWriter {
                 )?;
             }
 
-            if v < schema_version.to_string() {
+            if v < "2026-03-08" {
+                let total = self
+                    .conn
+                    .query_row("SELECT MAX(id) FROM terms", [], |r| r.get::<_, i64>(0))?
+                    as usize;
+
+                let message = &format!("Generating {}", DBFILE[DbChild::Search]);
+                progress_callback(YomitanProgress {
+                    message: message.to_string(),
+                    current: 0,
+                    total,
+                    steps: 0,
+                });
+
+                let _timer = Timer::new(message.to_string());
+
+                let tx = self.conn.transaction()?;
+                {
+                    let mut stmt = tx.prepare("SELECT id, term, reading FROM terms")?;
+
+                    let rows = stmt.query_map([], |r| {
+                        Ok((
+                            r.get::<_, i64>(0)?,
+                            r.get::<_, String>(1)?,
+                            r.get::<_, String>(2)?,
+                        ))
+                    })?;
+
+                    let mut stmt_write = tx.prepare(
+                        "INSERT INTO search.terms (id, term, reading) VALUES (?1, ?2, ?3)",
+                    )?;
+
+                    for (i, row) in rows.enumerate() {
+                        let (id, term, reading) = row?;
+                        stmt_write.execute(params![
+                            id,
+                            normalize_term(&term),
+                            normalize_reading(&reading)
+                        ])?;
+
+                        if i % 10_000 == 0 {
+                            progress_callback(YomitanProgress {
+                                message: message.to_string(),
+                                current: i,
+                                total,
+                                steps: i,
+                            });
+                        }
+                    }
+                }
+                tx.commit()?;
+            }
+
+            if v < schema_version {
                 self.conn
                     .prepare("UPDATE schema_meta SET value = ?2 WHERE key = ?1")?
                     .execute(["schema_version", schema_version])?;
@@ -395,6 +452,7 @@ impl YomitanWriter {
 
         match db_child {
             DbChild::YomitanGlossary => self.create_schema_glossary()?,
+            DbChild::Search => SearchDatabase::create_schema(&self.conn)?,
             _ => (),
         }
 

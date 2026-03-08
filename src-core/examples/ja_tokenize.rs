@@ -15,7 +15,7 @@ fn main() -> Result<(), anyhow::Error> {
 
     println!(
         "{:#?}",
-        service.ja_tokenize(arg_it.next().unwrap_or(
+        service.tokenize(arg_it.next().unwrap_or(
             "武器･防具≪エルガー武器商会≫の裏の鍛冶場を調べ「錆びた鍵」を入手します ".to_string()
         ))?
     );

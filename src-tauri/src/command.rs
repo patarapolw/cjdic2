@@ -251,5 +251,5 @@ pub async fn tokenize(
     text: String,
     state: tauri::State<'_, AppService>,
 ) -> Result<Vec<TokenizeSegment>, CJDicError> {
-    state.ja_tokenize(text)
+    state.tokenize(text)
 }
