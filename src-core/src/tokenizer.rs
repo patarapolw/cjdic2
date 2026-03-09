@@ -1,6 +1,7 @@
-use std::{fs::File, path::Path};
+use std::path::Path;
 
 use serde::Serialize;
+use vibrato_rkyv::CacheStrategy;
 
 use crate::CJDicError;
 
@@ -20,16 +21,17 @@ pub struct TokenizeSegment {
     pub details: Vec<String>,
 }
 
+#[derive(Clone)]
 pub struct Tokenizer {
-    ja_tokenizer: vibrato::Tokenizer,
+    ja_tokenizer: vibrato_rkyv::Tokenizer,
 }
 
 impl Tokenizer {
     pub fn new(vibrato_dict: impl AsRef<Path>) -> Result<Self, CJDicError> {
-        let reader = zstd::Decoder::new(File::open(vibrato_dict)?)?;
-        let dictionary = vibrato::Dictionary::read(reader)?;
+        let dictionary =
+            vibrato_rkyv::Dictionary::from_zstd(vibrato_dict, CacheStrategy::GlobalCache)?;
         Ok(Self {
-            ja_tokenizer: vibrato::Tokenizer::new(dictionary),
+            ja_tokenizer: vibrato_rkyv::Tokenizer::new(dictionary),
         })
     }
 

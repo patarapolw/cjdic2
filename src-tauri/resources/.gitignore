@@ -4,5 +4,5 @@
 jmdict.db
 
 manifest.json
-# vibrato dicts from https://github.com/daac-tools/vibrato/releases
+# vibrato-rkyv dicts from https://github.com/stellanomia/vibrato-rkyv/releases/tag/v0.6.2
 system.dic.zst

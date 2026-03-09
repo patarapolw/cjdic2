@@ -24,7 +24,7 @@
   },
   "bundle": {
     "resources": [
-      "resources/naist-jdic-mecab/system.dic.zst"
+      "resources/mecab-ipadic/system.dic.zst"
     ],
     "active": true,
     "targets": "all",

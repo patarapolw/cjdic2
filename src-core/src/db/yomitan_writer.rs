@@ -13,10 +13,8 @@ use zip::ZipArchive;
 
 use crate::{
     CJDicError, Timer,
-    db::{
-        DBFILE, DBSCHEMA, DbChild,
-        search::{SearchDatabase, normalize_reading},
-    },
+    db::{DBFILE, DBSCHEMA, DbChild, search::SearchDatabase},
+    tokenizer::Tokenizer,
 };
 
 fn blake3_hex(s: &str) -> String {
@@ -85,6 +83,7 @@ impl YomitanWriter {
 
     pub fn create_schema(
         &mut self,
+        tokenizer: Tokenizer,
         progress_callback: impl Fn(YomitanProgress),
     ) -> Result<(), CJDicError> {
         self.conn.execute_batch(
@@ -107,53 +106,52 @@ impl YomitanWriter {
                 UNIQUE (title, revision)
             );
             CREATE TABLE IF NOT EXISTS glossaries (     -- not used. moved to a new file
-                id      INTEGER PRIMARY KEY,
-                hash    TEXT NOT NULL UNIQUE,           -- maybe used in the future for excerpts
-                content TEXT NOT NULL
+                id              INTEGER PRIMARY KEY,
+                hash            TEXT NOT NULL UNIQUE,           -- maybe used in the future for excerpts
+                content         TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS def_tag_sets (id INTEGER PRIMARY KEY, tags TEXT NOT NULL UNIQUE);
             CREATE TABLE IF NOT EXISTS term_tag_sets (id INTEGER PRIMARY KEY, tags TEXT NOT NULL UNIQUE);
             CREATE TABLE IF NOT EXISTS rule_sets (id INTEGER PRIMARY KEY, rules TEXT NOT NULL UNIQUE);
             CREATE TABLE IF NOT EXISTS terms (
-                id INTEGER PRIMARY KEY,
-                dict_id INTEGER NOT NULL REFERENCES dictionaries(id) ON DELETE CASCADE,
-                term TEXT NOT NULL,
-                reading TEXT NOT NULL,
-                def_tags_id INTEGER,
-                rules_id INTEGER,
-                score INTEGER NOT NULL DEFAULT 0,
-                glossary_id INTEGER NOT NULL REFERENCES glossaries(id),
-                sequence INTEGER,
-                term_tags_id INTEGER,
-                term_norm TEXT                      -- custom
+                id              INTEGER PRIMARY KEY,
+                dict_id         INTEGER NOT NULL REFERENCES dictionaries(id) ON DELETE CASCADE,
+                term            TEXT NOT NULL,
+                reading         TEXT NOT NULL,
+                def_tags_id     INTEGER,
+                rules_id        INTEGER,
+                score           INTEGER NOT NULL DEFAULT 0,
+                glossary_id     INTEGER NOT NULL REFERENCES glossaries(id),
+                sequence        INTEGER,
+                term_tags_id    INTEGER
             );
             CREATE TABLE IF NOT EXISTS term_meta (
-                id INTEGER PRIMARY KEY,
-                dict_id INTEGER NOT NULL REFERENCES dictionaries(id) ON DELETE CASCADE,
-                term TEXT NOT NULL,
-                mode TEXT NOT NULL,
-                reading TEXT,
-                data TEXT NOT NULL
+                id              INTEGER PRIMARY KEY,
+                dict_id         INTEGER NOT NULL REFERENCES dictionaries(id) ON DELETE CASCADE,
+                term            TEXT NOT NULL,
+                mode            TEXT NOT NULL,
+                reading         TEXT,
+                data            TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS tags (
-                id INTEGER PRIMARY KEY,
-                dict_id INTEGER NOT NULL REFERENCES dictionaries(id) ON DELETE CASCADE,
-                name TEXT NOT NULL,
-                category TEXT,
-                sort_order INTEGER NOT NULL DEFAULT 0,
-                notes TEXT,
-                score INTEGER NOT NULL DEFAULT 0,
+                id              INTEGER PRIMARY KEY,
+                dict_id         INTEGER NOT NULL REFERENCES dictionaries(id) ON DELETE CASCADE,
+                name            TEXT NOT NULL,
+                category        TEXT,
+                sort_order      INTEGER NOT NULL DEFAULT 0,
+                notes           TEXT,
+                score           INTEGER NOT NULL DEFAULT 0,
                 UNIQUE (dict_id, name)
             );
             CREATE TABLE IF NOT EXISTS kanji (
-                id INTEGER PRIMARY KEY,
-                dict_id INTEGER NOT NULL REFERENCES dictionaries(id) ON DELETE CASCADE,
-                kanji TEXT NOT NULL,
-                onyomi TEXT,
-                kunyomi TEXT,
-                tags TEXT,
-                meanings TEXT NOT NULL DEFAULT '[]',
-                stats TEXT NOT NULL DEFAULT '{}'
+                id              INTEGER PRIMARY KEY,
+                dict_id         INTEGER NOT NULL REFERENCES dictionaries(id) ON DELETE CASCADE,
+                kanji           TEXT NOT NULL,
+                onyomi          TEXT,
+                kunyomi         TEXT,
+                tags            TEXT,
+                meanings        TEXT NOT NULL DEFAULT '[]',
+                stats           TEXT NOT NULL DEFAULT '{}'
             );
             ",
         )?;
@@ -164,8 +162,6 @@ impl YomitanWriter {
             CREATE INDEX IF NOT EXISTS dictionaries_lang ON dictionaries (lang);
 
             CREATE INDEX IF NOT EXISTS terms_dict_id ON terms (dict_id);
-            CREATE INDEX IF NOT EXISTS terms_term_norm ON terms (term_norm);
-            CREATE INDEX IF NOT EXISTS terms_reading ON terms (reading);
             CREATE INDEX IF NOT EXISTS terms_term_reading_score ON terms(term, reading, score DESC);
 
             CREATE INDEX IF NOT EXISTS term_meta_dict_id ON term_meta (dict_id);
@@ -180,8 +176,26 @@ impl YomitanWriter {
         self.attach_db(DbChild::YomitanGlossary)?;
         self.attach_db(DbChild::Search)?;
 
-        let schema_version = "2026-03-08";
+        let search_max_id = {
+            let mut stmt = self.conn.prepare(&format!(
+                "SELECT COALESCE(MAX(id), 0) FROM {}.terms",
+                DBSCHEMA[DbChild::Search]
+            ))?;
+            let mut rows = stmt.query([])?;
 
+            if let Some(r) = rows.next()? {
+                r.get(0)?
+            } else {
+                0
+            }
+        };
+        if search_max_id == 0 {
+            let mut search_db = SearchDatabase::new(&mut self.conn);
+            search_db.reset_db()?;
+            search_db.regenerate_yomitan("main", tokenizer.clone(), &progress_callback)?;
+        }
+
+        let schema_version = "2026-03-08";
         let current_schema_version = {
             let mut stmt = self
                 .conn
@@ -189,14 +203,14 @@ impl YomitanWriter {
 
             stmt.query_one([], |r| r.get::<_, String>(0)).optional()?
         };
-
         if let Some(v) = current_schema_version {
             let v = v.as_str();
             if v < "2" {
-                let total = self
-                    .conn
-                    .query_row("SELECT MAX(id) FROM glossaries", [], |r| r.get::<_, i64>(0))?
-                    as usize;
+                let total =
+                    self.conn
+                        .query_row("SELECT COALESCE(MAX(id), 0) FROM glossaries", [], |r| {
+                            r.get::<_, i64>(0)
+                        })? as usize;
 
                 let message = &format!("Migrate to {}", DBFILE[DbChild::YomitanGlossary]);
                 progress_callback(YomitanProgress {
@@ -270,59 +284,6 @@ impl YomitanWriter {
                 )?;
             }
 
-            if v < "2026-03-08" {
-                let total = self
-                    .conn
-                    .query_row("SELECT MAX(id) FROM terms", [], |r| r.get::<_, i64>(0))?
-                    as usize;
-
-                let message = &format!("Generating {}", DBFILE[DbChild::Search]);
-                progress_callback(YomitanProgress {
-                    message: message.to_string(),
-                    current: 0,
-                    total,
-                    steps: 0,
-                });
-
-                let _timer = Timer::new(message.to_string());
-
-                let tx = self.conn.transaction()?;
-                {
-                    let mut stmt = tx.prepare("SELECT id, term, reading FROM terms")?;
-
-                    let rows = stmt.query_map([], |r| {
-                        Ok((
-                            r.get::<_, i64>(0)?,
-                            r.get::<_, String>(1)?,
-                            r.get::<_, String>(2)?,
-                        ))
-                    })?;
-
-                    let mut stmt_write = tx.prepare(
-                        "INSERT INTO search.terms (id, term, reading) VALUES (?1, ?2, ?3)",
-                    )?;
-
-                    for (i, row) in rows.enumerate() {
-                        let (id, term, reading) = row?;
-                        stmt_write.execute(params![
-                            id,
-                            normalize_term(&term),
-                            normalize_reading(&reading)
-                        ])?;
-
-                        if i % 10_000 == 0 {
-                            progress_callback(YomitanProgress {
-                                message: message.to_string(),
-                                current: i,
-                                total,
-                                steps: i,
-                            });
-                        }
-                    }
-                }
-                tx.commit()?;
-            }
-
             if v < schema_version {
                 self.conn
                     .prepare("UPDATE schema_meta SET value = ?2 WHERE key = ?1")?
@@ -390,32 +351,6 @@ impl YomitanWriter {
             }
         }
 
-        let tx = self.conn.transaction()?;
-        {
-            let mut stmt = tx.prepare("SELECT rowid, term FROM terms WHERE term_norm IS NULL")?;
-
-            let rows = stmt.query_map([], |row| {
-                Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
-            })?;
-
-            let mut update_stmt = tx.prepare("UPDATE terms SET term_norm = ?1 WHERE rowid = ?2")?;
-
-            for row in rows {
-                let (rowid, term) = row?;
-                let norm = normalize_term(&term); // your Unicode normalizer
-                update_stmt.execute((&norm, rowid))?;
-            }
-        }
-        tx.commit()?;
-        // 5 sec
-
-        self.conn.execute_batch(
-            "
-            CREATE INDEX IF NOT EXISTS terms_term_norm ON terms (term_norm);
-            ",
-        )?;
-        // 1 sec
-
         Ok(())
     }
 
@@ -452,7 +387,7 @@ impl YomitanWriter {
 
         match db_child {
             DbChild::YomitanGlossary => self.create_schema_glossary()?,
-            DbChild::Search => SearchDatabase::create_schema(&self.conn)?,
+            DbChild::Search => SearchDatabase::new(&mut self.conn).create_schema()?,
             _ => (),
         }
 

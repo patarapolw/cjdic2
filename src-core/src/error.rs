@@ -6,7 +6,7 @@ use std::{
 use rusqlite::Connection;
 use serde::Serialize;
 use thiserror::Error;
-use vibrato::{Tokenizer, errors::VibratoError};
+use vibrato_rkyv::{Tokenizer, errors::VibratoError};
 use zip::result::ZipError;
 
 #[derive(Debug, Error, Serialize)]
