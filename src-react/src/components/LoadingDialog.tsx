@@ -46,17 +46,17 @@ function LoadingDialog() {
     if (isInit.current) return;
     isInit.current = true;
 
-    // empty query warmup
-    // no need to await
-    invoke("search_yomitan", {
-      qTerm: "",
-      qReading: "",
-      limit: 1,
-      offset: 0,
-    });
-
     document.body.style.pointerEvents = "none";
     downloadAssets().finally(() => {
+      // empty query warmup
+      // no need to await
+      invoke("search_yomitan", {
+        qTerm: "",
+        qReading: "",
+        limit: 1,
+        offset: 0,
+      });
+
       document.body.style.pointerEvents = "";
       const elFirstInput = document.querySelector(
         'input[type="text"]',

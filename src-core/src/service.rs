@@ -121,7 +121,7 @@ impl AppService {
         progress_callback: impl Fn(YomitanProgress),
     ) -> Result<YomitanWriter, CJDicError> {
         let mut writer = YomitanWriter::new(self.db.dir.clone())?;
-        writer.create_schema(self.tokenizer.clone(), &progress_callback)?;
+        writer.create_schema(&progress_callback)?;
         Ok(writer)
     }
 
@@ -187,7 +187,7 @@ impl AppService {
 
         {
             let mut writer = YomitanWriter::new(self.db.dir.clone())?;
-            writer.create_schema(self.tokenizer.clone(), &import_callback)?;
+            writer.create_schema(&import_callback)?;
         }
 
         {
@@ -208,6 +208,8 @@ impl AppService {
                     Self::import_yomitan_zip_file(&mut writer, *zip_file, lang, &import_callback)?;
                 }
             }
+
+            writer.make_search_db(self.tokenizer.clone(), &import_callback)?;
         }
 
         Ok(LoadYomitanZipDirResult {

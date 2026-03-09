@@ -83,7 +83,6 @@ impl YomitanWriter {
 
     pub fn create_schema(
         &mut self,
-        tokenizer: Tokenizer,
         progress_callback: impl Fn(YomitanProgress),
     ) -> Result<(), CJDicError> {
         self.conn.execute_batch(
@@ -175,25 +174,6 @@ impl YomitanWriter {
         self.create_materialized_views()?;
         self.attach_db(DbChild::YomitanGlossary)?;
         self.attach_db(DbChild::Search)?;
-
-        let search_max_id = {
-            let mut stmt = self.conn.prepare(&format!(
-                "SELECT COALESCE(MAX(id), 0) FROM {}.terms",
-                DBSCHEMA[DbChild::Search]
-            ))?;
-            let mut rows = stmt.query([])?;
-
-            if let Some(r) = rows.next()? {
-                r.get(0)?
-            } else {
-                0
-            }
-        };
-        if search_max_id == 0 {
-            let mut search_db = SearchDatabase::new(&mut self.conn);
-            search_db.reset_db()?;
-            search_db.regenerate_yomitan("main", tokenizer.clone(), &progress_callback)?;
-        }
 
         let schema_version = "2026-03-08";
         let current_schema_version = {
@@ -804,6 +784,18 @@ impl YomitanWriter {
             "DELETE FROM dictionaries WHERE bundle_name = ?1 AND lang = ?2",
             [bundle_name, lang],
         )?;
+
+        Ok(())
+    }
+
+    pub fn make_search_db(
+        &mut self,
+        tokenizer: Tokenizer,
+        progress_callback: impl Fn(YomitanProgress),
+    ) -> Result<(), CJDicError> {
+        let mut search_db = SearchDatabase::new(&mut self.conn);
+        search_db.reset_db()?;
+        search_db.regenerate_yomitan("main", tokenizer.clone(), &progress_callback)?;
 
         Ok(())
     }

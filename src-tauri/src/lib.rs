@@ -29,7 +29,7 @@ pub fn run() {
                 let bytes = app.fs().read(&resource_path)?;
 
                 // Write to app's cache dir, which IS a real writable filesystem path on Android
-                let cache_dir = app.path().cache_dir()?;
+                let cache_dir = app.path().app_cache_dir()?.join("vibrato");
                 create_dir_all(&cache_dir)?;
                 let dict_path = cache_dir.join("system.dic.zst");
                 fs::write(&dict_path, &bytes)?;

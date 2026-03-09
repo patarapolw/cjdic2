@@ -1,7 +1,6 @@
-use std::path::Path;
+use std::{fs::File, io::BufReader, path::Path};
 
 use serde::Serialize;
-use vibrato_rkyv::CacheStrategy;
 
 use crate::CJDicError;
 
@@ -28,8 +27,9 @@ pub struct Tokenizer {
 
 impl Tokenizer {
     pub fn new(vibrato_dict: impl AsRef<Path>) -> Result<Self, CJDicError> {
-        let dictionary =
-            vibrato_rkyv::Dictionary::from_zstd(vibrato_dict, CacheStrategy::GlobalCache)?;
+        let file = BufReader::new(File::open(vibrato_dict)?);
+        let reader = zstd::Decoder::new(file)?;
+        let dictionary = vibrato_rkyv::Dictionary::read(reader)?;
         Ok(Self {
             ja_tokenizer: vibrato_rkyv::Tokenizer::new(dictionary),
         })
