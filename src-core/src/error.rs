@@ -1,4 +1,5 @@
 use std::{
+    backtrace::Backtrace,
     string::FromUtf8Error,
     sync::{MutexGuard, PoisonError},
 };
@@ -51,63 +52,72 @@ pub enum CJDicError {
 
 impl From<rusqlite::Error> for CJDicError {
     fn from(e: rusqlite::Error) -> Self {
-        eprintln!("{e:#}");
+        let bt = Backtrace::capture();
+        eprintln!("{e:#}\n{bt}");
         CJDicError::Database(e.to_string())
     }
 }
 
 impl From<serde_json::Error> for CJDicError {
     fn from(e: serde_json::Error) -> Self {
-        eprintln!("{e:#}");
+        let bt = Backtrace::capture();
+        eprintln!("{e:#}\n{bt}");
         CJDicError::Serialization(e.to_string())
     }
 }
 
 impl From<anyhow::Error> for CJDicError {
     fn from(e: anyhow::Error) -> Self {
-        eprintln!("{e:#}");
+        let bt = Backtrace::capture();
+        eprintln!("{e:#}\n{bt}");
         CJDicError::AnyhowError(e.to_string())
     }
 }
 
 impl From<std::io::Error> for CJDicError {
     fn from(e: std::io::Error) -> Self {
-        eprintln!("{e:#}");
+        let bt = Backtrace::capture();
+        eprintln!("{e:#}\n{bt}");
         CJDicError::IOError(e.to_string())
     }
 }
 
 impl From<ZipError> for CJDicError {
     fn from(e: ZipError) -> Self {
-        eprintln!("{e:#}");
+        let bt = Backtrace::capture();
+        eprintln!("{e:#}\n{bt}");
         CJDicError::ZipError(e.to_string())
     }
 }
 
 impl From<VibratoError> for CJDicError {
     fn from(e: VibratoError) -> Self {
-        eprintln!("{e:#}");
+        let bt = Backtrace::capture();
+        eprintln!("{e:#}\n{bt}");
         CJDicError::VibratoError(e.to_string())
     }
 }
 
 impl From<FromUtf8Error> for CJDicError {
     fn from(e: FromUtf8Error) -> Self {
-        eprintln!("{e:#}");
+        let bt = Backtrace::capture();
+        eprintln!("{e:#}\n{bt}");
         CJDicError::FromUtf8Error(e.to_string())
     }
 }
 
 impl From<PoisonError<MutexGuard<'_, Connection>>> for CJDicError {
     fn from(e: PoisonError<MutexGuard<'_, Connection>>) -> Self {
-        eprintln!("{e:#}");
+        let bt = Backtrace::capture();
+        eprintln!("{e:#}\n{bt}");
         CJDicError::ConnectionMutexGuardError(e.to_string())
     }
 }
 
 impl From<PoisonError<MutexGuard<'_, Tokenizer>>> for CJDicError {
     fn from(e: PoisonError<MutexGuard<'_, Tokenizer>>) -> Self {
-        eprintln!("{e:#}");
+        let bt = Backtrace::capture();
+        eprintln!("{e:#}\n{bt}");
         CJDicError::TokenizerMutexGuardError(e.to_string())
     }
 }

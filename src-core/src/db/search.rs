@@ -51,10 +51,11 @@ impl<'a> SearchDatabase<'a> {
         self.conn.execute_batch(&format!(
             "
             DELETE FROM {0}.terms;
-            DELETE FROM {0}.terms_ft;
+            DROP TABLE {0}.terms_ft;
         ",
             DBSCHEMA[DbChild::Search]
         ))?;
+        self.create_schema()?;
 
         Ok(())
     }

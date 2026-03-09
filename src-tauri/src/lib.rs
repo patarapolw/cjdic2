@@ -15,34 +15,38 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .setup(|app| {
-            let app_dir = app.path().app_config_dir()?;
-            create_dir_all(&app_dir)?;
+            let config_dir = app.path().app_config_dir()?;
+            create_dir_all(&config_dir)?;
 
-            let dict_path = {
-                // Resolve the resource path (returns asset://localhost/ URI on Android)
-                let resource_path = app.path().resolve(
+            let data_dir = app.path().app_data_dir()?;
+            create_dir_all(&data_dir.join("yomitan/ja"))?;
+
+            let cache_dir = app.path().app_cache_dir()?;
+            let vibrato_dic_dir = cache_dir.join("vibrato");
+            create_dir_all(&vibrato_dic_dir)?;
+
+            println!("{:?}", vibrato_dic_dir);
+
+            let vibrato_dic_path = vibrato_dic_dir.join("system.dic");
+            if !vibrato_dic_path.exists() {
+                let zst_path = app.path().resolve(
                     "resources/mecab-ipadic/system.dic.zst",
                     tauri::path::BaseDirectory::Resource,
                 )?;
 
                 // Use Tauri's fs abstraction — works on both Android and desktop
-                let bytes = app.fs().read(&resource_path)?;
+                let bytes = app.fs().read(&zst_path)?;
 
-                // Write to app's cache dir, which IS a real writable filesystem path on Android
-                let cache_dir = app.path().app_cache_dir()?.join("vibrato");
-                create_dir_all(&cache_dir)?;
-                let dict_path = cache_dir.join("system.dic.zst");
-                fs::write(&dict_path, &bytes)?;
+                let mut decoder = zstd::Decoder::new(bytes.as_slice())?;
+                let mut out = fs::File::create(&vibrato_dic_path)?;
+                std::io::copy(&mut decoder, &mut out)?;
+            }
 
-                dict_path
-            };
+            println!("{:?}", vibrato_dic_path);
 
-            // db_path is app_dir;
-            let service = AppService::new(&app_dir, &dict_path)?;
+            // db_path is at config_dir;
+            let service = AppService::new(&config_dir, &vibrato_dic_path)?;
             app.manage(service);
-
-            let app_data_dir = app.path().app_data_dir()?;
-            create_dir_all(&app_data_dir.join("yomitan/ja"))?;
 
             Ok(())
         })

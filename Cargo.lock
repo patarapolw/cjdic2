@@ -645,6 +645,7 @@ dependencies = [
  "tauri-plugin-opener",
  "tokio",
  "zip",
+ "zstd",
 ]
 
 [[package]]

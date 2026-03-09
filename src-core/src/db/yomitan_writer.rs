@@ -1,4 +1,5 @@
 use blake3::hash;
+use enum_map::EnumMap;
 use rusqlite::{Connection, OptionalExtension, Result, Transaction, params};
 use serde::Serialize;
 use serde_json::Value;
@@ -61,6 +62,7 @@ pub struct YomitanZipImportResult {
 pub struct YomitanWriter {
     dir: PathBuf,
     conn: Connection,
+    is_db_attached: EnumMap<DbChild, bool>,
 }
 
 impl YomitanWriter {
@@ -78,7 +80,15 @@ impl YomitanWriter {
             ",
         )?;
 
-        Ok(Self { dir, conn })
+        Ok(Self {
+            dir,
+            conn,
+            is_db_attached: enum_map! {
+                DbChild::YomitanGlossary => false,
+                DbChild::Search => false,
+                _ => true
+            },
+        })
     }
 
     pub fn create_schema(
@@ -172,8 +182,8 @@ impl YomitanWriter {
         )?;
 
         self.create_materialized_views()?;
-        self.attach_db(DbChild::YomitanGlossary)?;
-        self.attach_db(DbChild::Search)?;
+        self.ensure_db_attached(DbChild::YomitanGlossary)?;
+        self.ensure_db_attached(DbChild::Search)?;
 
         let schema_version = "2026-03-08";
         let current_schema_version = {
@@ -334,7 +344,11 @@ impl YomitanWriter {
         Ok(())
     }
 
-    fn attach_db(&mut self, db_child: DbChild) -> Result<(), CJDicError> {
+    fn ensure_db_attached(&mut self, db_child: DbChild) -> Result<(), CJDicError> {
+        if self.is_db_attached[db_child] {
+            return Ok(());
+        }
+
         let dir = self.dir.clone();
         let path = if self.dir.is_absolute() {
             dir
@@ -370,6 +384,8 @@ impl YomitanWriter {
             DbChild::Search => SearchDatabase::new(&mut self.conn).create_schema()?,
             _ => (),
         }
+
+        self.is_db_attached[db_child] = true;
 
         Ok(())
     }
@@ -506,7 +522,7 @@ impl YomitanWriter {
             }
         }
 
-        self.attach_db(DbChild::YomitanGlossary)?;
+        self.ensure_db_attached(DbChild::YomitanGlossary)?;
 
         {
             let tx = self.conn.transaction()?;
@@ -793,11 +809,29 @@ impl YomitanWriter {
         tokenizer: Tokenizer,
         progress_callback: impl Fn(YomitanProgress),
     ) -> Result<(), CJDicError> {
+        self.ensure_db_attached(DbChild::Search)?;
+
         let mut search_db = SearchDatabase::new(&mut self.conn);
+        search_db.create_schema()?;
         search_db.reset_db()?;
         search_db.regenerate_yomitan("main", tokenizer.clone(), &progress_callback)?;
 
         Ok(())
+    }
+
+    pub fn check_search_db(&mut self) -> Result<bool, CJDicError> {
+        self.ensure_db_attached(DbChild::Search)?;
+
+        let is_filled = self.conn.query_row(
+            "
+                SELECT
+                    (SELECT COALESCE(MAX(id), 0) FROM search.terms) >=
+                    (SELECT COALESCE(MAX(id), 0) FROM terms)
+                ",
+            [],
+            |r| r.get::<_, bool>(0),
+        )?;
+        Ok(is_filled)
     }
 }
 

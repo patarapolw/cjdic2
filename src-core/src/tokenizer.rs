@@ -26,9 +26,8 @@ pub struct Tokenizer {
 }
 
 impl Tokenizer {
-    pub fn new(vibrato_dict: impl AsRef<Path>) -> Result<Self, CJDicError> {
-        let file = BufReader::new(File::open(vibrato_dict)?);
-        let reader = zstd::Decoder::new(file)?;
+    pub fn new(vibrato_dic: impl AsRef<Path>) -> Result<Self, CJDicError> {
+        let reader = BufReader::new(File::open(vibrato_dic)?);
         let dictionary = vibrato_rkyv::Dictionary::read(reader)?;
         Ok(Self {
             ja_tokenizer: vibrato_rkyv::Tokenizer::new(dictionary),

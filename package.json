@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev:desktop": "tauri dev",
-    "dev:mobile": "tauri dev -c src-tauri/tauri.mobile.conf.json",
-    "dev:android": "tauri android dev",
+    "dev:desktop": "cross-env RUST_BACKTRACE=1 tauri dev",
+    "dev:mobile": "cross-env RUST_BACKTRACE=1 tauri dev -c src-tauri/tauri.mobile.conf.json",
+    "dev:android": "cross-env RUST_BACKTRACE=1 tauri android dev",
     "build:desktop": "tauri build",
     "build:android": "tauri android build",
     "install:android": "adb install -r src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk",
@@ -17,6 +17,7 @@
     "tauri": "tauri"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2"
+    "@tauri-apps/cli": "^2",
+    "cross-env": "^10.1.0"
   }
 }

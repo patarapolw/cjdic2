@@ -40,10 +40,10 @@ pub struct AppService {
 impl AppService {
     pub fn new(
         db_dir: impl AsRef<Path>,
-        vibrato_dict: impl AsRef<Path>,
+        vibrato_dic: impl AsRef<Path>,
     ) -> Result<Self, CJDicError> {
         let db = Database::new(db_dir)?;
-        let tokenizer = Tokenizer::new(vibrato_dict)?;
+        let tokenizer = Tokenizer::new(vibrato_dic)?;
         Ok(Self { db, tokenizer })
     }
 
@@ -174,6 +174,10 @@ impl AppService {
                     to_be_removed_dicts.push(z.to_string());
                 }
             }
+        } else {
+            for z in dir_zip_map.keys() {
+                new_dicts.push(z.to_string());
+            }
         }
 
         // Import ordering
@@ -202,14 +206,19 @@ impl AppService {
 
         {
             let mut writer = YomitanWriter::new(self.db.dir.clone())?;
-
             for z in new_dicts.clone().iter() {
                 if let Some(zip_file) = dir_zip_map.get(z) {
                     Self::import_yomitan_zip_file(&mut writer, *zip_file, lang, &import_callback)?;
                 }
             }
+        }
 
-            writer.make_search_db(self.tokenizer.clone(), &import_callback)?;
+        {
+            let mut writer = YomitanWriter::new(self.db.dir.clone())?;
+
+            if new_dicts.len() + to_be_removed_dicts.len() > 0 || !writer.check_search_db()? {
+                writer.make_search_db(self.tokenizer.clone(), &import_callback)?;
+            }
         }
 
         Ok(LoadYomitanZipDirResult {
