@@ -813,7 +813,6 @@ impl YomitanWriter {
 
         let mut search_db = SearchDatabase::new(&mut self.conn);
         search_db.create_schema()?;
-        search_db.reset_db()?;
         search_db.regenerate_yomitan("main", tokenizer.clone(), &progress_callback)?;
 
         Ok(())

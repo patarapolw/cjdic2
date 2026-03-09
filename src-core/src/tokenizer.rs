@@ -7,6 +7,7 @@ use crate::CJDicError;
 #[derive(Debug, Serialize)]
 pub struct TokenizeSegment {
     pub surface: String,
+    /// ```txt
     /// 0	品詞	Part-of-speech
     /// 1	品詞細分類1	Part-of-speech subcategory 1
     /// 2	品詞細分類2	Part-of-speech subcategory 2
@@ -16,6 +17,7 @@ pub struct TokenizeSegment {
     /// 6	原形	Base form
     /// 7	読み	Reading
     /// 8	発音	Pronunciation
+    /// ```
     /// @see https://lindera.github.io/lindera/dictionaries/ipadic.html
     pub details: Vec<String>,
 }

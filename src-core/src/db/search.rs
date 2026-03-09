@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, Transaction, params};
 use wana_kana::utils::katakana_to_hiragana;
 
 use crate::{
@@ -22,8 +22,14 @@ impl<'a> SearchDatabase<'a> {
         Self { conn }
     }
 
-    pub fn create_schema(&self) -> Result<(), CJDicError> {
-        self.conn.execute_batch(
+    pub fn create_schema(&mut self) -> Result<(), CJDicError> {
+        let tx = self.conn.transaction()?;
+        SearchDatabase::create_schema_tx(&tx)?;
+        Ok(())
+    }
+
+    fn create_schema_tx(tx: &'a Transaction) -> Result<(), CJDicError> {
+        tx.execute_batch(
             &format!("
             CREATE TABLE IF NOT EXISTS {0}.terms (
                 id          INTEGER PRIMARY KEY,    -- yomitan.terms.id OR yomitan dups OR -user.terms.id
@@ -43,19 +49,6 @@ impl<'a> SearchDatabase<'a> {
             );
         ", DBSCHEMA[DbChild::Search]),
         )?;
-
-        Ok(())
-    }
-
-    pub fn reset_db(&self) -> Result<(), CJDicError> {
-        self.conn.execute_batch(&format!(
-            "
-            DELETE FROM {0}.terms;
-            DROP TABLE {0}.terms_ft;
-        ",
-            DBSCHEMA[DbChild::Search]
-        ))?;
-        self.create_schema()?;
 
         Ok(())
     }
@@ -88,6 +81,16 @@ impl<'a> SearchDatabase<'a> {
 
         let tx = self.conn.transaction()?;
         {
+            tx.execute_batch(&format!(
+                "
+                DELETE FROM {0}.terms;
+                DROP TABLE {0}.terms_ft;
+            ",
+                DBSCHEMA[DbChild::Search]
+            ))?;
+
+            SearchDatabase::create_schema_tx(&tx)?;
+
             let mut stmt = tx.prepare(&format!(
                 "SELECT t.id, t.term, t.reading, tr.max_score
                 FROM {0}.terms t
