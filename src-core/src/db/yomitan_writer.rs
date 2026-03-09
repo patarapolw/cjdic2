@@ -594,7 +594,7 @@ impl YomitanWriter {
 
                         steps += entries.len();
                         progress_callback(YomitanProgress {
-                            message: format!("Reading term banks"),
+                            message: format!("- Reading term banks"),
                             current: bank_i,
                             total: n_bank,
                             steps,
@@ -698,7 +698,7 @@ impl YomitanWriter {
 
             steps += 1;
             progress_callback(YomitanProgress {
-                message: format!("Reading term meta banks"),
+                message: format!("- Reading term meta banks"),
                 current: 0,
                 total: 0,
                 steps,
@@ -741,7 +741,7 @@ impl YomitanWriter {
 
             steps += 1;
             progress_callback(YomitanProgress {
-                message: format!("Reading tag banks"),
+                message: format!("- Reading tag banks"),
                 current: 0,
                 total: 0,
                 steps,
@@ -820,6 +820,9 @@ impl YomitanWriter {
 
     pub fn check_search_db(&mut self) -> Result<bool, CJDicError> {
         self.ensure_db_attached(DbChild::Search)?;
+
+        let mut search_db = SearchDatabase::new(&mut self.conn);
+        search_db.create_schema()?;
 
         let is_filled = self.conn.query_row(
             "

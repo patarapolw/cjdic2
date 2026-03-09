@@ -25,6 +25,7 @@ impl<'a> SearchDatabase<'a> {
     pub fn create_schema(&mut self) -> Result<(), CJDicError> {
         let tx = self.conn.transaction()?;
         SearchDatabase::create_schema_tx(&tx)?;
+        tx.commit()?;
         Ok(())
     }
 

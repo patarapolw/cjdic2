@@ -25,8 +25,6 @@ pub fn run() {
             let vibrato_dic_dir = cache_dir.join("vibrato");
             create_dir_all(&vibrato_dic_dir)?;
 
-            println!("{:?}", vibrato_dic_dir);
-
             let vibrato_dic_path = vibrato_dic_dir.join("system.dic");
             if !vibrato_dic_path.exists() {
                 let zst_path = app.path().resolve(
@@ -41,8 +39,6 @@ pub fn run() {
                 let mut out = fs::File::create(&vibrato_dic_path)?;
                 std::io::copy(&mut decoder, &mut out)?;
             }
-
-            println!("{:?}", vibrato_dic_path);
 
             // db_path is at config_dir;
             let service = AppService::new(&config_dir, &vibrato_dic_path)?;
