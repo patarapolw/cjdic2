@@ -14,6 +14,7 @@
     "build:android:debug": "tauri android build --debug",
     "install:android:debug": "adb install -r src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk",
     "run:desktop": ".\\target\\release\\cjdic2.exe",
+    "release": "node release.js",
     "dev": "cd src-react && pnpm run dev",
     "build": "cd src-react && pnpm run build",
     "tauri": "tauri"

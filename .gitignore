@@ -47,3 +47,5 @@ target
 
 test.db*
 /tmp
+.env
+.env.*
