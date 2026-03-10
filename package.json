@@ -1,17 +1,19 @@
 {
   "name": "cjdic2",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "dev:desktop": "cross-env RUST_BACKTRACE=1 tauri dev",
     "dev:mobile": "cross-env RUST_BACKTRACE=1 tauri dev -c src-tauri/tauri.mobile.conf.json",
     "dev:android": "cross-env RUST_BACKTRACE=1 tauri android dev",
+    "log:android": "adb logcat -e \"RustStdoutStderr\"",
     "build:desktop": "tauri build",
     "build:android": "tauri android build",
     "install:android": "adb install -r src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk",
     "build:android:debug": "tauri android build --debug",
     "install:android:debug": "adb install -r src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk",
+    "run:desktop": ".\\target\\release\\cjdic2.exe",
     "dev": "cd src-react && pnpm run dev",
     "build": "cd src-react && pnpm run build",
     "tauri": "tauri"

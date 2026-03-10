@@ -178,7 +178,11 @@ function SearchPage() {
 
   function onSearchboxChange(q: string) {
     if (isAutoKana) {
-      q = toKana(q, { useObsoleteKana: true, IMEMode: true });
+      q = toKana(
+        q,
+        { useObsoleteKana: true, IMEMode: true },
+        Object.fromEntries("<>[]".split("").map((c) => [c, c])),
+      );
     }
 
     setQ(q);
