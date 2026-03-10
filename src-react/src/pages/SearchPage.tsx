@@ -43,6 +43,8 @@ function SearchPage() {
 
   const nSearch = useRef(0);
   const searchboxRef = useRef<HTMLInputElement | null>(null);
+  const resultScrollRef = useRef<HTMLElement | null>(null);
+  const prevNormQ = useRef("");
 
   const lang = "ja-JP";
 
@@ -101,6 +103,8 @@ function SearchPage() {
       norm_q = norm_q.replace(/n$/i, "ん").replace(/[a-z]$/i, "");
     }
     if (!norm_q) return;
+    if (isNew && prevNormQ.current === norm_q) return;
+    prevNormQ.current = norm_q;
 
     const ender = /\p{Z}$/u.test(q) ? "" : "*";
 
@@ -150,6 +154,10 @@ function SearchPage() {
         }
       }
 
+      if (resultScrollRef.current) {
+        resultScrollRef.current.scrollTop = 0;
+      }
+
       setEntries(result);
     } else {
       setEntries([...entries, ...result]);
@@ -178,11 +186,13 @@ function SearchPage() {
 
   function onSearchboxChange(q: string) {
     if (isAutoKana) {
-      q = toKana(
-        q,
-        { useObsoleteKana: true, IMEMode: true },
-        Object.fromEntries("<>[]".split("").map((c) => [c, c])),
-      );
+      q = toKana(q, {
+        useObsoleteKana: true,
+        IMEMode: true,
+        customKanaMapping: Object.fromEntries(
+          "<>[]".split("").map((c) => [c, c]),
+        ),
+      });
     }
 
     setQ(q);
@@ -199,7 +209,10 @@ function SearchPage() {
     }
   };
 
-  const addFurigana: CompositionEventHandler = ({ data: compositionData }) => {
+  const addFurigana: CompositionEventHandler = ({
+    data: compositionData,
+    target,
+  }) => {
     const cleanedFuri = [...furigana.replace(/ｎ/g, "ん")]
       .map((c) => katakanaToHiragana(c))
       .join("");
@@ -223,7 +236,20 @@ function SearchPage() {
     const markup = parts
       .map((p, idx) => (idx & 1 ? `<${p}>[${rt[idx]}]` : p))
       .join("");
-    setQ(markup);
+
+    setQ((q) => {
+      if (!(target instanceof HTMLInputElement)) return markup;
+
+      let { selectionStart } = target;
+      selectionStart = selectionStart || 0;
+      if (selectionStart < compositionData.length) return markup;
+
+      return (
+        q.substring(0, selectionStart - compositionData.length) +
+        markup +
+        q.substring(selectionStart)
+      );
+    });
   };
 
   function katakanaToHiragana(k: string) {
@@ -298,6 +324,7 @@ function SearchPage() {
         </div>
       </form>
       <Box
+        ref={resultScrollRef}
         as={"ol"}
         listStyleType={"number"}
         style={{ overflowY: "scroll", scrollbarWidth: "none" }}
