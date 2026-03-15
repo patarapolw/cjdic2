@@ -115,6 +115,9 @@ function SearchPage() {
     if (isAutoKana) {
       norm_q = norm_q.replace(/n$/i, "ん").replace(/[a-z]$/i, "");
     }
+
+    norm_q = norm_q.replace(/＊/g, "*").replace(/？/g, "?").replace(/^〜/, "~");
+
     if (!norm_q) return;
 
     const ender =
@@ -391,6 +394,9 @@ function SearchPage() {
                         {"）"}
                       </>
                     ) : null}
+                    <button onClick={() => onTermClicked("~" + term)}>
+                      🔗
+                    </button>
                     <span>【{dict_title}】</span>
                     <span>{JSONdumpClean(it)}</span>
                   </Card.Header>

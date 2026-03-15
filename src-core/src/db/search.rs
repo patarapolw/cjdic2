@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use rusqlite::{Connection, Transaction, params};
 use wana_kana::utils::katakana_to_hiragana;
 
@@ -114,8 +112,6 @@ impl<'a> SearchDatabase<'a> {
                 DBSCHEMA[DbChild::Search]
             ))?;
 
-            let exclude_pos =
-                HashSet::from(["助詞", "助動詞", "記号", "接続詞"].map(|p| p.to_string()));
             let mut stmt_write_ft = tx.prepare(&format!(
                 "INSERT INTO {}.terms_ft (rowid, term) VALUES (?1, ?2)",
                 DBSCHEMA[DbChild::Search]
@@ -130,28 +126,7 @@ impl<'a> SearchDatabase<'a> {
                     max_score
                 ])?;
 
-                let mut segmented: Vec<String> = vec![];
-                for t in tokenizer.tokenize(term) {
-                    let mut base = t.surface;
-                    let mut pos = None;
-
-                    for (i, dt) in t.details.iter().enumerate() {
-                        match i {
-                            0 => base = dt.to_string(),
-                            6 => pos = Some(dt),
-                            _ => {}
-                        }
-                    }
-
-                    if let Some(p) = pos {
-                        if exclude_pos.contains(p.as_str()) {
-                            continue;
-                        }
-                    }
-                    segmented.push(base);
-                }
-
-                stmt_write_ft.execute(params![id, segmented.join(" ")])?;
+                stmt_write_ft.execute(params![id, tokenizer.ja_normalize(term).join(" ")])?;
 
                 if i % 10_000 == 0 {
                     progress_callback(YomitanProgress {

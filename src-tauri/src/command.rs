@@ -5,7 +5,8 @@ use std::{
 };
 
 use cjdic2_core::{
-    AppService, CJDicError, SqlParam, TokenizeSegment, YomitanRow, YomitanZipImportResult,
+    AppService, CJDicError, SqlParam, TokenizeSegment, YomitanDictEntry, YomitanRow,
+    YomitanZipImportResult,
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
@@ -13,8 +14,15 @@ use tauri_plugin_http::reqwest::Client;
 use tokio::io::AsyncWriteExt;
 use zip::ZipArchive;
 
+#[tauri::command]
+pub async fn list_yomitan_dict(
+    state: tauri::State<'_, AppService>,
+) -> Result<Vec<YomitanDictEntry>, CJDicError> {
+    state.list_yomitan_dict()
+}
+
 #[derive(Deserialize)]
-pub struct YomitanDictEntry {
+pub struct YomitanDownloadDictEntry {
     url: String,
     filepath: String,
 }
@@ -22,7 +30,7 @@ pub struct YomitanDictEntry {
 #[tauri::command]
 pub async fn init_yomitan(
     app: AppHandle,
-    dicts: Vec<YomitanDictEntry>,
+    dicts: Vec<YomitanDownloadDictEntry>,
     lang: String,
     state: tauri::State<'_, AppService>,
 ) -> Result<(), CJDicError> {

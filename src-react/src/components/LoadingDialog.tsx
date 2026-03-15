@@ -7,6 +7,13 @@ import { listen } from "@tauri-apps/api/event";
 import { supabase } from "../lib/supabaseClient";
 
 interface YomitanDictEntry {
+  title: string;
+  bundle_name: string;
+  revision: string;
+  lang: string;
+}
+
+interface YomitanDownloadDictEntry {
   url: string;
   filepath: string;
 }
@@ -66,13 +73,17 @@ function LoadingDialog() {
       }
     });
     async function downloadAssets(lang = "ja") {
-      const dicts: YomitanDictEntry[] = [];
+      const existing_dicts =
+        await invoke<YomitanDictEntry[]>("list_yomitan_dict");
+
+      const dicts: YomitanDownloadDictEntry[] = [];
 
       if (lang === "ja") {
-        {
-          const filename = "Pixiv.zip";
-          const filepath = `yomitan/${lang}/${filename}`;
-
+        const filename = "Pixiv.zip";
+        const filepath = `yomitan/${lang}/${filename}`;
+        const existing = existing_dicts.find((d) => d.bundle_name === filename);
+        if (!existing) {
+          // Maybe check revision update
           dicts.push({
             filepath,
             url:
@@ -83,6 +94,11 @@ function LoadingDialog() {
                 console.error(e);
                 return "";
               })) || "",
+          });
+        } else {
+          dicts.push({
+            filepath,
+            url: "",
           });
         }
 

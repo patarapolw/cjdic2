@@ -47,6 +47,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            list_yomitan_dict,
             init_yomitan,
             import_yomitan_dict,
             remove_yomitan_dict,

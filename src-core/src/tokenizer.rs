@@ -1,4 +1,4 @@
-use std::{fs::File, io::BufReader, path::Path};
+use std::{collections::HashSet, fs::File, io::BufReader, path::Path};
 
 use serde::Serialize;
 
@@ -25,6 +25,7 @@ pub struct TokenizeSegment {
 #[derive(Clone)]
 pub struct Tokenizer {
     ja_tokenizer: vibrato_rkyv::Tokenizer,
+    ja_exclude_pos: HashSet<String>,
 }
 
 impl Tokenizer {
@@ -33,6 +34,9 @@ impl Tokenizer {
         let dictionary = vibrato_rkyv::Dictionary::read(reader)?;
         Ok(Self {
             ja_tokenizer: vibrato_rkyv::Tokenizer::new(dictionary),
+            ja_exclude_pos: HashSet::from(
+                ["助詞", "助動詞", "記号", "接続詞"].map(|p| p.to_string()),
+            ),
         })
     }
 
@@ -55,5 +59,35 @@ impl Tokenizer {
         }
 
         output
+    }
+
+    pub fn ja_normalize(&self, text: String) -> Vec<String> {
+        let mut segmented: Vec<String> = vec![];
+        for t in self.ja_tokenize(text) {
+            let mut surface = t.surface;
+            let mut pos = None;
+
+            for (i, dt) in t.details.iter().enumerate() {
+                match i {
+                    0 => pos = Some(dt),
+                    6 => {
+                        let base = dt.to_string();
+                        if base != "*" {
+                            surface = base
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            if let Some(p) = pos {
+                if self.ja_exclude_pos.contains(p.as_str()) {
+                    continue;
+                }
+            }
+            segmented.push(surface);
+        }
+
+        segmented
     }
 }

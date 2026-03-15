@@ -16,6 +16,14 @@ use crate::{
     tokenizer::{TokenizeSegment, Tokenizer},
 };
 
+#[derive(Serialize, Debug)]
+pub struct YomitanDictEntry {
+    pub title: String,
+    pub bundle_name: String,
+    pub revision: String,
+    pub lang: String,
+}
+
 #[derive(Serialize, Debug, Clone)]
 pub struct LoadYomitanZipDirResult {
     pub new_dicts: Vec<String>,
@@ -42,8 +50,9 @@ impl AppService {
         db_dir: impl AsRef<Path>,
         vibrato_dic: impl AsRef<Path>,
     ) -> Result<Self, CJDicError> {
-        let db = Database::new(db_dir)?;
         let tokenizer = Tokenizer::new(vibrato_dic)?;
+        let db = Database::new(db_dir, tokenizer.clone())?;
+
         Ok(Self { db, tokenizer })
     }
 
@@ -123,6 +132,35 @@ impl AppService {
         let mut writer = YomitanWriter::new(self.db.dir.clone())?;
         writer.create_schema(&progress_callback)?;
         Ok(writer)
+    }
+
+    pub fn list_yomitan_dict(&self) -> Result<Vec<YomitanDictEntry>, CJDicError> {
+        let db_path = self.db.dir.join(DBFILE[DbChild::Yomitan]);
+        let mut out = vec![];
+
+        if db_path.exists() {
+            let conn = Connection::open(&db_path)?;
+            let mut stmt = conn.prepare(
+                "
+            SELECT title, bundle_name, revision, lang
+            FROM dictionaries
+            WHERE bundle_name IS NOT NULL",
+            )?;
+            let rows = stmt.query_map([], |r| {
+                Ok(YomitanDictEntry {
+                    title: r.get(0)?,
+                    bundle_name: r.get(1)?,
+                    revision: r.get(2)?,
+                    lang: r.get(3)?,
+                })
+            })?;
+
+            for r in rows {
+                out.push(r?);
+            }
+        }
+
+        Ok(out)
     }
 
     pub fn load_yomitan_zip_dir<Z, LoadCallback, ImportCallback>(

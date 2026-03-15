@@ -9,7 +9,7 @@ mod util;
 
 pub use db::{YomitanProgress, YomitanRow, YomitanZipImportResult, ZipSource};
 pub use error::CJDicError;
-pub use service::{AppService, SqlParam};
+pub use service::{AppService, SqlParam, YomitanDictEntry};
 pub use tokenizer::TokenizeSegment;
 pub use util::Timer;
 

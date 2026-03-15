@@ -18,13 +18,14 @@ pub use yomitan::YomitanRow;
 mod yomitan_writer;
 pub use yomitan_writer::{YomitanProgress, YomitanWriter, YomitanZipImportResult, ZipSource};
 
-use crate::CJDicError;
+use crate::{CJDicError, tokenizer::Tokenizer};
 
 #[derive(Clone)]
 pub(crate) struct Database {
     pub(crate) conn: Arc<Mutex<Connection>>,
     pub(crate) dir: PathBuf,
     is_db_attached: EnumMap<DbChild, Arc<AtomicBool>>,
+    tokenizer: Tokenizer,
 }
 
 #[derive(Debug, Enum, Clone, Copy)]
@@ -52,7 +53,7 @@ pub(crate) static DBSCHEMA: LazyLock<EnumMap<DbChild, &str>> = LazyLock::new(|| 
 });
 
 impl Database {
-    pub fn new(db_dir: impl AsRef<Path>) -> Result<Self, CJDicError> {
+    pub fn new(db_dir: impl AsRef<Path>, tokenizer: Tokenizer) -> Result<Self, CJDicError> {
         let dir = db_dir.as_ref().to_path_buf();
         let conn = Connection::open(dir.join(USER_DBFILE))?;
 
@@ -73,6 +74,7 @@ impl Database {
                 DbChild::YomitanGlossary => Arc::new(AtomicBool::new(false)),
                 DbChild::Search => Arc::new(AtomicBool::new(false)),
             },
+            tokenizer,
         })
     }
 
@@ -80,7 +82,10 @@ impl Database {
         self.ensure_db_attached(DbChild::Yomitan)?;
         self.ensure_db_attached(DbChild::YomitanGlossary)?;
         self.ensure_db_attached(DbChild::Search)?;
-        Ok(yomitan::YomitanDatabase::new(self.clone()))
+        Ok(yomitan::YomitanDatabase::new(
+            self.clone(),
+            self.tokenizer.clone(),
+        ))
     }
 
     fn ensure_db_attached(&self, db_child: DbChild) -> Result<(), CJDicError> {
