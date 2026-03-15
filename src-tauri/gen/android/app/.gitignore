@@ -9,3 +9,4 @@
 /src/main/assets/**/*.zst
 /src/main/assets/**/*.db
 /src/main/assets/**/manifest.json
+!/src/debug
