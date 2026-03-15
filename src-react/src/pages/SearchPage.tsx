@@ -53,6 +53,7 @@ function SearchPage() {
   const [searchTimeout, set_searchTimeout] = useState(0);
   const [furigana, set_furigana] = useState("");
   const [isAutoKana, set_isAutoKana] = useState(true);
+  const [isScrollEnd, set_isScrollEnd] = useState(false);
 
   const nSearch = useRef(0);
   const searchboxRef = useRef<HTMLInputElement | null>(null);
@@ -167,6 +168,7 @@ function SearchPage() {
 
       if (resultScrollRef.current) {
         resultScrollRef.current.scrollTop = 0;
+        set_isScrollEnd(false);
       }
 
       set_entries(result);
@@ -181,12 +183,17 @@ function SearchPage() {
     if (!(target instanceof HTMLElement)) return;
     const { scrollHeight, scrollTop } = target;
 
-    if (scrollHeight - 20 > scrollTop + target.getBoundingClientRect().height)
+    if (
+      isScrollEnd ||
+      scrollHeight - window.innerHeight / 2 >
+        scrollTop + target.getBoundingClientRect().height
+    )
       return;
 
     const results = await runSearch(false);
     if (!results?.length) {
       target.style.paddingBottom = "50vh";
+      set_isScrollEnd(true);
       return;
     }
 
@@ -368,7 +375,11 @@ function SearchPage() {
                   <Card.Header display={"block"}>
                     <a
                       onClick={() =>
-                        onTermClicked(reading ? `<${term}>{${reading}}` : term)
+                        onTermClicked(
+                          reading && reading !== term
+                            ? `<${term}>{${reading}}`
+                            : term,
+                        )
                       }
                     >
                       {term}
