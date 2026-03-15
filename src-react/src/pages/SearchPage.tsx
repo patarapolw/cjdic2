@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useSearchParams } from "react-router";
 import { toKana } from "wanakana";
 
 import {
@@ -35,16 +36,27 @@ interface Entry {
 }
 
 function SearchPage() {
-  const [q, setQ] = useState("");
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const [searchTimeout, setSearchTimeout] = useState(0);
-  const [furigana, setFurigana] = useState("");
+  const [searchParams, set_searchParams] = useSearchParams();
+
+  useEffect(() => {
+    let q = searchParams.get("q") || "";
+    if (q) set_q(q);
+  }, [searchParams]);
+
+  function searchParams_setQ(q: string) {
+    if (searchParams.get("q") === q) return;
+    set_searchParams({ q });
+  }
+
+  const [q, set_q] = useState("");
+  const [entries, set_entries] = useState<Entry[]>([]);
+  const [searchTimeout, set_searchTimeout] = useState(0);
+  const [furigana, set_furigana] = useState("");
   const [isAutoKana, set_isAutoKana] = useState(true);
 
   const nSearch = useRef(0);
   const searchboxRef = useRef<HTMLInputElement | null>(null);
   const resultScrollRef = useRef<HTMLElement | null>(null);
-  const prevNormQ = useRef("");
 
   const lang = "ja-JP";
 
@@ -59,7 +71,7 @@ function SearchPage() {
 
       set_clipboardText((clipboardText) => {
         if (clipboardText !== newText) {
-          setQ(newText + " ");
+          searchParams_setQ(newText + " ");
           return newText;
         }
         return clipboardText;
@@ -75,7 +87,7 @@ function SearchPage() {
 
   function trySearch() {
     if (!q.trim()) {
-      setEntries([]);
+      set_entries([]);
       return;
     }
 
@@ -88,7 +100,7 @@ function SearchPage() {
 
     nSearch.current += 1;
 
-    setSearchTimeout(
+    set_searchTimeout(
       setTimeout(() => {
         if (nSearch.current > 1) runSearch();
       }, 250),
@@ -103,8 +115,6 @@ function SearchPage() {
       norm_q = norm_q.replace(/n$/i, "ん").replace(/[a-z]$/i, "");
     }
     if (!norm_q) return;
-    if (isNew && prevNormQ.current === norm_q) return;
-    prevNormQ.current = norm_q;
 
     const ender = /\p{Z}$/u.test(q) ? "" : "*";
 
@@ -149,7 +159,7 @@ function SearchPage() {
             segs.map((s) => s.surface).join("") +
             " ";
 
-          setQ(newQ);
+          searchParams_setQ(newQ);
           return;
         }
       }
@@ -158,9 +168,9 @@ function SearchPage() {
         resultScrollRef.current.scrollTop = 0;
       }
 
-      setEntries(result);
+      set_entries(result);
     } else {
-      setEntries([...entries, ...result]);
+      set_entries([...entries, ...result]);
     }
 
     return result;
@@ -195,7 +205,7 @@ function SearchPage() {
       });
     }
 
-    setQ(q);
+    set_q(q);
   }
 
   const FURIGANA_REGEX = /^[\p{scx=Hiragana}\p{scx=Katakana}]+$/u;
@@ -205,7 +215,7 @@ function SearchPage() {
     data: compositionData,
   }) => {
     if (FURIGANA_REGEX.test(compositionData)) {
-      setFurigana(compositionData);
+      set_furigana(compositionData);
     }
   };
 
@@ -237,7 +247,7 @@ function SearchPage() {
       .map((p, idx) => (idx & 1 ? `<${p}>[${rt[idx]}]` : p))
       .join("");
 
-    setQ((q) => {
+    set_q((q) => {
       if (!(target instanceof HTMLInputElement)) return markup;
 
       let { selectionStart } = target;
@@ -264,11 +274,23 @@ function SearchPage() {
       size={"xs"}
       me={-2}
       onClick={() => {
-        setQ("");
+        searchParams_setQ(q);
+        searchParams_setQ("");
+        set_q("");
         searchboxRef.current ? searchboxRef.current.focus() : null;
       }}
     />
   ) : null;
+
+  function onTermClicked(t: string) {
+    searchParams_setQ(q);
+    searchParams_setQ(t + " ");
+  }
+
+  function JSONdumpClean(o: Record<string, any>) {
+    const p = Object.entries(o).filter(([, v]) => v || v === 0);
+    return p.length ? JSON.stringify(Object.fromEntries(p), null, 1) : null;
+  }
 
   return (
     <Stack
@@ -335,10 +357,18 @@ function SearchPage() {
             <li key={i} lang={lang} style={{ marginLeft: "1.5em" }}>
               <div>
                 <Card.Root>
-                  <Card.Header>
-                    {term}
-                    {reading ? ` (${reading})` : ""} 【{dict_title}】
-                    {JSON.stringify(it, (_, v) => v || undefined)}
+                  <Card.Header flexDirection={"row"} gap={0}>
+                    <a onClick={() => onTermClicked(term + " ")}>{term}</a>
+                    {reading && reading !== term ? (
+                      <>
+                        {"（"}
+                        <a onClick={() => onTermClicked(reading + " ")}>
+                          {reading}
+                        </a>
+                        {"）"}
+                      </>
+                    ) : null}
+                    【{dict_title}】{JSONdumpClean(it)}
                   </Card.Header>
                   <Card.Body>
                     <div
@@ -352,7 +382,7 @@ function SearchPage() {
                         <Glossary
                           key={i}
                           glossary={g}
-                          onTermClicked={(t) => setQ(t + " ")}
+                          onTermClicked={onTermClicked}
                         />
                       ))}
                     </div>

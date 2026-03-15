@@ -15,7 +15,6 @@ pub struct YomitanRow {
     rules: String,
     score: i64,
     glossary_json: String,
-    glossary_b: Vec<u8>,
     sequence: Option<i64>,
     term_tags: String,
     dict_title: String,
@@ -118,26 +117,27 @@ impl YomitanDatabase {
         "
         ))?;
         let rows = stmt.query_map(params![q_term_norm, q_reading, limit, offset], |r| {
-            Ok(YomitanRow {
-                term: r.get(0)?,
-                reading: r.get(1)?,
-                def_tags: r.get(2)?,
-                rules: r.get(3)?,
-                score: r.get(4)?,
-                glossary_json: String::new(),
-                glossary_b: r.get(5)?,
-                sequence: r.get(6)?,
-                term_tags: r.get(7)?,
-                dict_title: r.get(8)?,
-            })
+            Ok((
+                YomitanRow {
+                    term: r.get(0)?,
+                    reading: r.get(1)?,
+                    def_tags: r.get(2)?,
+                    rules: r.get(3)?,
+                    score: r.get(4)?,
+                    glossary_json: String::from("[]"), // a valid JSON array
+                    sequence: r.get(6)?,
+                    term_tags: r.get(7)?,
+                    dict_title: r.get(8)?,
+                },
+                r.get::<_, Vec<u8>>(5)?,
+            ))
         })?;
 
         let mut out = Vec::new();
         for row in rows {
-            let mut r = row?;
+            let (mut r, glossary_b) = row?;
             r.glossary_json =
-                String::from_utf8(decompressor.decompress(&r.glossary_b, MAX_DECOMPRESSED_SIZE)?)?;
-            r.glossary_b = vec![];
+                String::from_utf8(decompressor.decompress(&glossary_b, MAX_DECOMPRESSED_SIZE)?)?;
 
             out.push(r);
         }
