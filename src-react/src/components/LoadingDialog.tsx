@@ -38,7 +38,7 @@ interface Progress {
 }
 
 function LoadingDialog() {
-  const [messages, setMessages] = useState<Progress[]>([]);
+  const [messages, set_messages] = useState<Progress[]>([]);
 
   const isInit = useRef(false);
 
@@ -106,11 +106,11 @@ function LoadingDialog() {
       }
 
       await invoke("init_yomitan", { dicts, lang });
-      setMessages([]);
+      set_messages([]);
     }
 
     listen<LoadYomitanZipDirResult>("load-yomitan-dir", ({ payload }) => {
-      setMessages((messages) => {
+      set_messages((messages) => {
         if (payload.new_dicts.length > 0) {
           messages = [
             ...messages,
@@ -149,7 +149,7 @@ function LoadingDialog() {
   }, []);
 
   function updateProgress(payload: Progress) {
-    setMessages((messages) => {
+    set_messages((messages) => {
       const prev = messages[messages.length - 1];
       if (prev?.message === payload.message) {
         messages = messages.slice(0, messages.length - 1);

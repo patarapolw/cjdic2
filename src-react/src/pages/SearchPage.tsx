@@ -6,13 +6,13 @@ import {
   useState,
 } from "react";
 import { useSearchParams } from "react-router";
-import { toKana } from "wanakana";
+import { toHiragana, toKana } from "wanakana";
 
 import {
   Box,
   Card,
   CloseButton,
-  Group,
+  Field,
   Input,
   InputGroup,
   Stack,
@@ -116,9 +116,10 @@ function SearchPage() {
     }
     if (!norm_q) return;
 
-    const ender = /\p{Z}$/u.test(q) ? "" : "*";
+    const ender =
+      /\p{Z}$/u.test(q) || [..."*?[]"].some((c) => q.includes(c)) ? "" : "*";
 
-    const re = /\<(.+?)\>\[(.+?)\]/g;
+    const re = /\<(.+?)\>{(.+?)}/g;
 
     let qTerm = "";
     let qReading = "";
@@ -199,9 +200,7 @@ function SearchPage() {
       q = toKana(q, {
         useObsoleteKana: true,
         IMEMode: true,
-        customKanaMapping: Object.fromEntries(
-          "<>[]".split("").map((c) => [c, c]),
-        ),
+        customKanaMapping: Object.fromEntries([..."<>{}"].map((c) => [c, c])),
       });
     }
 
@@ -224,14 +223,14 @@ function SearchPage() {
     target,
   }) => {
     const cleanedFuri = [...furigana.replace(/ｎ/g, "ん")]
-      .map((c) => katakanaToHiragana(c))
+      .map((c) => toHiragana(c, { passRomaji: true }))
       .join("");
 
     let parts = compositionData.split(KANJI_REGEX);
     if (parts.length === 1) return;
 
     const hiraganaParts = parts.map((p) =>
-      [...p].map((c) => katakanaToHiragana(c)).join(""),
+      [...p].map((c) => toHiragana(c, { passRomaji: true })).join(""),
     );
     const regex = new RegExp(
       `^${hiraganaParts.map((p, idx) => `(${idx & 1 ? ".+" : p})`).join("")}$`,
@@ -244,7 +243,7 @@ function SearchPage() {
     rt.shift();
 
     const markup = parts
-      .map((p, idx) => (idx & 1 ? `<${p}>[${rt[idx]}]` : p))
+      .map((p, idx) => (idx & 1 ? `<${p}>{${rt[idx]}}` : p))
       .join("");
 
     set_q((q) => {
@@ -261,13 +260,6 @@ function SearchPage() {
       );
     });
   };
-
-  function katakanaToHiragana(k: string) {
-    let c = k.charCodeAt(0);
-    return c >= 12449 && c <= 12531
-      ? String.fromCharCode(k.charCodeAt(0) - 96)
-      : k;
-  }
 
   const clearButton = q.trim() ? (
     <CloseButton
@@ -309,7 +301,7 @@ function SearchPage() {
           e.preventDefault();
         }}
       >
-        <Group attached w="full">
+        <Field.Root w="full">
           <InputGroup endElement={clearButton}>
             <Input
               id="greet-input"
@@ -324,8 +316,24 @@ function SearchPage() {
               placeholder="Search..."
             />
           </InputGroup>
-          {/* <Button type="submit">Search</Button> */}
-        </Group>
+          {q.includes(" ") ? (
+            <Field.HelperText>
+              Space (" ") to mark word boundary for search
+            </Field.HelperText>
+          ) : null}
+          {[..."*?[]"].some((c) => q.includes(c)) ? (
+            <Field.HelperText>
+              <code>{"*?[]"}</code> can be used as
+              <a
+                href="https://en.wikipedia.org/wiki/Glob_(programming)#Syntax"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                glob
+              </a>
+            </Field.HelperText>
+          ) : null}
+        </Field.Root>
         <div style={{ marginTop: "0.5em", display: "flex", gap: "1em" }}>
           <Switch.Root
             checked={isAutoKana}
@@ -357,18 +365,23 @@ function SearchPage() {
             <li key={i} lang={lang} style={{ marginLeft: "1.5em" }}>
               <div>
                 <Card.Root>
-                  <Card.Header flexDirection={"row"} gap={0}>
-                    <a onClick={() => onTermClicked(term + " ")}>{term}</a>
+                  <Card.Header display={"block"}>
+                    <a
+                      onClick={() =>
+                        onTermClicked(reading ? `<${term}>{${reading}}` : term)
+                      }
+                    >
+                      {term}
+                    </a>
                     {reading && reading !== term ? (
                       <>
                         {"（"}
-                        <a onClick={() => onTermClicked(reading + " ")}>
-                          {reading}
-                        </a>
+                        <a onClick={() => onTermClicked(reading)}>{reading}</a>
                         {"）"}
                       </>
                     ) : null}
-                    【{dict_title}】{JSONdumpClean(it)}
+                    <span>【{dict_title}】</span>
+                    <span>{JSONdumpClean(it)}</span>
                   </Card.Header>
                   <Card.Body>
                     <div
