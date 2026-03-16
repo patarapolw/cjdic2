@@ -153,9 +153,12 @@ function SearchPage() {
     });
 
     if (isNew) {
-      if (!result.length && !isFromSplit && /^[^ ]{3,} $/.test(q)) {
+      const [s1, prefix = "", s2 = ""] = q.split(/^([\*\?\[\]\~]*)/);
+      const text = s1 || s2;
+
+      if (!result.length && !isFromSplit && /^[^ ]{3,} $/.test(text)) {
         const segs = await invoke<{ surface: string }[]>("tokenize", {
-          text: q,
+          text,
         });
         if (segs.length > 1) {
           const newQ =
@@ -164,7 +167,7 @@ function SearchPage() {
             segs.map((s) => s.surface).join("") +
             " ";
 
-          searchParams_setQ(newQ);
+          searchParams_setQ(prefix + newQ);
           return;
         }
       }
@@ -199,10 +202,6 @@ function SearchPage() {
       set_isScrollEnd(true);
       return;
     }
-
-    setTimeout(() => {
-      target.scrollTop = scrollTop + 100;
-    }, 100);
   };
 
   function onSearchboxChange(q: string) {

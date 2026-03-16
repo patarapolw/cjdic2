@@ -1,7 +1,6 @@
 {
   "name": "cjdic2",
   "private": true,
-  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "dev:desktop": "cross-env RUST_BACKTRACE=1 tauri dev",
