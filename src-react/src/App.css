@@ -44,3 +44,13 @@ html {
   height: 100vh;
   overflow-y: hidden;
 }
+
+html.dark .glossaries {
+  span {
+    word-break: keep-all;
+  }
+
+  img {
+    filter: invert(1) hue-rotate(180deg);
+  }
+}

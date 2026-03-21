@@ -113,6 +113,8 @@ impl YomitanWriter {
                 installed_at TEXT    NOT NULL DEFAULT (datetime('now')),
                 bundle_name  TEXT,                  -- custom
                 lang         TEXT    NOT NULL,      -- custom
+                asset_count  INTEGER,               -- custom
+                source       TEXT,                  -- custom
                 UNIQUE (title, revision)
             );
             CREATE TABLE IF NOT EXISTS glossaries (     -- not used. moved to a new file
@@ -186,7 +188,7 @@ impl YomitanWriter {
         self.ensure_db_attached(DbChild::YomitanGlossary)?;
         self.ensure_db_attached(DbChild::Search)?;
 
-        let schema_version = "2026-03-08";
+        let schema_version = "2026-03-21";
         let current_schema_version = {
             let mut stmt = self
                 .conn
@@ -271,6 +273,15 @@ impl YomitanWriter {
                     "
                     UPDATE glossaries SET content = '[]';
                     VACUUM;
+                ",
+                )?;
+            }
+
+            if v < "2026-03-21" {
+                self.conn.execute_batch(
+                    "
+                    ALTER TABLE dictionaries ADD COLUMN asset_count INTEGER;
+                    ALTER TABLE dictionaries ADD COLUMN source TEXT;
                 ",
                 )?;
             }
@@ -454,6 +465,8 @@ impl YomitanWriter {
         let cursor = Cursor::new(zip_file.bytes()?);
         let mut archive = ZipArchive::new(cursor)?;
 
+        let mut asset_count = 0;
+
         for i in 0..archive.len() {
             // Metadata — borrow ends before by_index_raw
             if let (Some(asset_name), is_dir) = {
@@ -481,6 +494,8 @@ impl YomitanWriter {
                 let mut entry = archive.by_index(i)?;
                 let mut out = File::create(&out_path)?;
                 io::copy(&mut entry, &mut out)?; // writes plain bytes
+
+                asset_count += 1;
             }
         }
 
@@ -491,7 +506,6 @@ impl YomitanWriter {
                 serde_json::from_str::<Value>(&s)?
             }
             Err(e) => {
-                // TODO: proper error handling
                 eprintln!("{}", e);
                 return Ok(YomitanZipImportResult {
                     exists: false,
@@ -534,17 +548,21 @@ impl YomitanWriter {
             .to_string();
 
         {
-            let title: &str = &title;
-            // Skip if already installed
+            // Skip if already installed or older revision
             let mut stmt = self
                 .conn
-                .prepare("SELECT (revision < ?2) FROM dictionaries WHERE title = ?1")?;
-            let mut rows = stmt.query(params![title, revision])?;
+                .prepare("SELECT (revision < ?2) FROM dictionaries WHERE bundle_name = ?1")?;
+            let mut rows = stmt.query(params![bundle_name, revision])?;
             if let Some(row) = rows.next()? {
                 let is_outdated: bool = row.get(0)?;
                 if is_outdated {
                     self.drop_dictionary(bundle_name, lang)?;
                 } else {
+                    self.conn.execute(
+                        "UPDATE dictionaries SET asset_count = ?2 WHERE bundle_name = ?1",
+                        params![bundle_name, asset_count],
+                    )?;
+
                     return Ok(YomitanZipImportResult {
                         exists: true,
                         load: false,
@@ -560,8 +578,8 @@ impl YomitanWriter {
             let tx = self.conn.transaction()?;
             tx.execute(
                 "INSERT INTO dictionaries
-                    (title, revision, author, url, description, lang, bundle_name) VALUES
-                    ( ?1,      ?2,      ?3,   ?4,      ?5,       ?6,     ?7)",
+                    (title, revision, author, url, description, lang, bundle_name, asset_count) VALUES
+                    ( ?1,      ?2,      ?3,   ?4,      ?5,       ?6,     ?7,        ?8)",
                 params![
                     title,
                     revision,
@@ -570,6 +588,7 @@ impl YomitanWriter {
                     index_file.get("description").and_then(Value::as_str),
                     lang,
                     bundle_name,
+                    asset_count,
                 ],
             )?;
 

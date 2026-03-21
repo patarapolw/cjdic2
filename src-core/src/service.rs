@@ -188,12 +188,21 @@ impl AppService {
         let mut new_dicts: Vec<String> = vec![];
         let mut to_be_removed_dicts: Vec<String> = vec![];
 
+        {
+            let mut writer = YomitanWriter::new(self.db.dir.clone())?;
+            writer.create_schema(&import_callback)?;
+        }
+
         let db_path = self.db.dir.join(DBFILE[DbChild::Yomitan]);
 
         if db_path.exists() {
             let conn = Connection::open(&db_path)?;
-            let mut stmt =
-                conn.prepare("SELECT DISTINCT bundle_name FROM dictionaries WHERE lang = ?1")?;
+            let mut stmt = conn.prepare(
+                "
+                SELECT DISTINCT bundle_name FROM dictionaries
+                WHERE lang = ?1 AND asset_count IS NOT NULL
+                ",
+            )?;
             let mut rows = stmt.query([lang])?;
 
             let mut db_zip_list: HashSet<String> = HashSet::new();
@@ -227,11 +236,6 @@ impl AppService {
             new_dicts: new_dicts.clone(),
             to_be_removed_dicts: to_be_removed_dicts.clone(),
         });
-
-        {
-            let mut writer = YomitanWriter::new(self.db.dir.clone())?;
-            writer.create_schema(&import_callback)?;
-        }
 
         {
             let conn = Connection::open(&db_path)?;

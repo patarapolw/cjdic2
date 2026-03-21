@@ -8,7 +8,13 @@
   "permissions": [
     "core:default",
     "opener:default",
-    "http:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://api.github.com/repos/*/releases/latest" },
+        { "url": "https://storage-worker.*.workers.dev" }
+      ]
+    },
     "fs:default",
     "clipboard-manager:allow-read-text"
   ]

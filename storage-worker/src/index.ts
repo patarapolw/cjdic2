@@ -13,6 +13,12 @@
 
 export default {
 	async fetch(request, env) {
+		// Auth check first
+		const auth = request.headers.get("Authorization");
+		if (auth !== `Bearer ${env.YOMITAN_STORAGE_API_TOKEN}`) {
+			return new Response("Unauthorized", { status: 401 });
+		}
+
 		const url = new URL(request.url);
 
 		// List files: GET /files

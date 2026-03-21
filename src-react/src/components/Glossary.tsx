@@ -57,14 +57,13 @@ export default function Glossary({
 function GlossaryImage({ img, yomitanURL }: { img: any; yomitanURL: string }) {
   return (
     <img
+      className="glossary-image"
       src={`${yomitanURL || ""}/${img.path}`}
-      width={img.width}
-      height={img.height}
       title={img.title}
       alt={img.alt}
       style={{
         imageRendering: img.imageRendering || "auto",
-        width: `${img.width}em`,
+        width: `${img.width}em`, // unit seems to be em, not px
         height: `${img.height}em`,
       }}
     />

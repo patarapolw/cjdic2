@@ -412,6 +412,7 @@ function SearchPage() {
                   </Card.Header>
                   <Card.Body>
                     <div
+                      className="glossaries"
                       style={{
                         display: "flex",
                         flexDirection: "column",

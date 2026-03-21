@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Dialog, Portal } from "@chakra-ui/react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { fetch } from "@tauri-apps/plugin-http";
 
 import { supabase } from "../lib/supabaseClient";
 
@@ -11,6 +12,13 @@ interface YomitanDictEntry {
   bundle_name: string;
   revision: string;
   lang: string;
+}
+
+interface YomitanStorageWorkerDictEntry {
+  key: string;
+  size: number;
+  uploaded: string;
+  url: string;
 }
 
 interface YomitanDownloadDictEntry {
@@ -118,6 +126,52 @@ function LoadingDialog() {
                 .getPublicUrl(`${lang}/${d.name}`).data.publicUrl,
             });
           }
+        }
+
+        const { VITE_STORAGE_WORKER_URL, VITE_STORAGE_WORKER_TOKEN } =
+          import.meta.env;
+
+        try {
+          const prefix = `${lang}/`;
+
+          let entries: YomitanStorageWorkerDictEntry[] = [];
+
+          const LAST_API_CALL_KEY = "LAST_API_CALL_KEY_storageWorkerURL";
+          const LAST_API_JSON_KEY = "LAST_API_JSON_KEY_storageWorkerURL";
+
+          const lastCall = localStorage.getItem(LAST_API_CALL_KEY);
+          const lastJSON = localStorage.getItem(LAST_API_JSON_KEY);
+
+          if (lastJSON && lastCall) {
+            const d = new Date(lastCall);
+            d.setDate(d.getDate() + 1);
+            if (d > new Date()) {
+              entries = JSON.parse(lastJSON);
+            }
+          }
+          if (!entries.length) {
+            console.log(`visiting ${VITE_STORAGE_WORKER_URL}`);
+
+            entries = await fetch(VITE_STORAGE_WORKER_URL + "/files", {
+              headers: {
+                Authorization: `Bearer ${VITE_STORAGE_WORKER_TOKEN}`,
+              },
+            }).then((r) => r.json());
+
+            localStorage.setItem(LAST_API_CALL_KEY, new Date().toISOString());
+            localStorage.setItem(LAST_API_JSON_KEY, JSON.stringify(entries));
+          }
+
+          dicts.push(
+            ...entries
+              .filter((o) => o.key.startsWith(prefix))
+              .map((o) => ({
+                filepath: `yomitan/${lang}/${o.key.substring(prefix.length)}`,
+                url: o.url,
+              })),
+          );
+        } catch (e) {
+          console.error(e);
         }
       }
 
