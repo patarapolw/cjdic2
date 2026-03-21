@@ -16,6 +16,10 @@
       ]
     },
     "fs:default",
+    {
+      "identifier": "fs:allow-appdata-read",
+      "allow": [{ "path": "$APPDATA/yomitan/**" }]
+    },
     "clipboard-manager:allow-read-text"
   ]
 }

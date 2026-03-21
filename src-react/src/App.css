@@ -50,7 +50,7 @@ html.dark .glossaries {
     word-break: keep-all;
   }
 
-  img[src$=".svg"] {
+  img[src$=".svg"], img[src^="data:image/svg"] {
     filter: invert(1) hue-rotate(180deg);
   }
 

@@ -18,8 +18,7 @@ import {
   Stack,
   Switch,
 } from "@chakra-ui/react";
-import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-import { appDataDir, join } from "@tauri-apps/api/path";
+import { invoke } from "@tauri-apps/api/core";
 import { readText } from "@tauri-apps/plugin-clipboard-manager";
 
 import Glossary from "../components/Glossary";
@@ -55,13 +54,6 @@ function SearchPage() {
   const [furigana, set_furigana] = useState("");
   const [isAutoKana, set_isAutoKana] = useState(true);
   const [isScrollEnd, set_isScrollEnd] = useState(false);
-  const [yomitanURL, set_yomitanURL] = useState("");
-
-  useEffect(() => {
-    (async () => {
-      set_yomitanURL(convertFileSrc(await join(await appDataDir(), "yomitan")));
-    })();
-  });
 
   const nSearch = useRef(0);
   const searchboxRef = useRef<HTMLInputElement | null>(null);
@@ -420,11 +412,7 @@ function SearchPage() {
                       }}
                     >
                       {JSON.parse(glossary_json).map((g: any, i: number) => (
-                        <Glossary
-                          key={i}
-                          glossary={g}
-                          {...{ yomitanURL, onTermClicked }}
-                        />
+                        <Glossary key={i} glossary={g} {...{ onTermClicked }} />
                       ))}
                     </div>
                   </Card.Body>

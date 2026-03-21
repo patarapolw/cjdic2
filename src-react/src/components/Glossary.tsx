@@ -1,13 +1,12 @@
-import { createElement as h } from "react";
+import { createElement as h, useEffect, useState } from "react";
+import { BaseDirectory, readFile } from "@tauri-apps/plugin-fs";
 
 export default function Glossary({
   glossary,
-  yomitanURL,
   maxLength,
   onTermClicked,
 }: {
   glossary: any;
-  yomitanURL: string;
   maxLength?: number;
   onTermClicked: (t: string) => void;
 }) {
@@ -31,17 +30,14 @@ export default function Glossary({
 
   // GlossaryImage
   if ("type" in glossary && glossary.type === "image") {
-    return <GlossaryImage img={glossary} yomitanURL={yomitanURL} />;
+    return <GlossaryImage img={glossary} />;
   }
 
   // GlossaryStructuredContent
   if ("type" in glossary && glossary.type === "structured-content") {
     const sc = glossary;
     return (
-      <StructuredContent
-        node={sc.content}
-        {...{ yomitanURL, maxLength, onTermClicked }}
-      />
+      <StructuredContent node={sc.content} {...{ maxLength, onTermClicked }} />
     );
   }
 
@@ -54,11 +50,32 @@ export default function Glossary({
   return null;
 }
 
-function GlossaryImage({ img, yomitanURL }: { img: any; yomitanURL: string }) {
+function GlossaryImage({ img }: { img: any }) {
+  const [src, set_src] = useState(img.path);
+
+  useEffect(() => {
+    readFile("yomitan/" + img.path, {
+      baseDir: BaseDirectory.AppData,
+    }).then((b) => {
+      const r = new FileReader();
+      r.onload = () => {
+        const dataSrc = r.result as string;
+        const ext = img.path.split(".").pop();
+        set_src(
+          dataSrc.replace(
+            "data:application/octet-stream",
+            "data:image/" + (ext === "svg" ? "svg+xml" : ext),
+          ),
+        );
+      };
+      r.readAsDataURL(new File([b], img.path));
+    });
+  });
+
   return (
     <img
       className="glossary-image"
-      src={`${yomitanURL || ""}/${img.path}`}
+      src={src}
       title={img.title}
       alt={img.alt}
       style={{
@@ -72,12 +89,10 @@ function GlossaryImage({ img, yomitanURL }: { img: any; yomitanURL: string }) {
 
 function StructuredContent({
   node,
-  yomitanURL,
   maxLength,
   onTermClicked,
 }: {
   node: any;
-  yomitanURL: string;
   maxLength?: number;
   onTermClicked: (t: string) => void;
 }): any {
@@ -102,7 +117,7 @@ function StructuredContent({
           <StructuredContent
             key={i}
             node={n}
-            {...{ yomitanURL, maxLength, onTermClicked }}
+            {...{ maxLength, onTermClicked }}
           />
         ))}
       </>
@@ -119,7 +134,7 @@ function StructuredContent({
 
   // Image
   if (tag === "img") {
-    return <GlossaryImage img={node} yomitanURL={yomitanURL} />;
+    return <GlossaryImage img={node} />;
   }
 
   // Link
@@ -144,10 +159,7 @@ function StructuredContent({
         }}
       >
         {content ? (
-          <StructuredContent
-            node={content}
-            {...{ yomitanURL, maxLength, onTermClicked }}
-          />
+          <StructuredContent node={content} {...{ maxLength, onTermClicked }} />
         ) : null}
       </a>
     );
@@ -161,7 +173,6 @@ function StructuredContent({
     { style: block.style, title: block.title, open: block.open },
     StructuredContent({
       node: block.content,
-      yomitanURL,
       maxLength,
       onTermClicked,
     }),
