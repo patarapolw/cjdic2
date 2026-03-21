@@ -7,7 +7,8 @@ use std::{
     borrow::Cow,
     collections::HashMap,
     env::current_dir,
-    io::{Cursor, Read},
+    fs::{File, create_dir_all},
+    io::{self, Cursor, Read},
     path::{Path, PathBuf},
 };
 use zip::ZipArchive;
@@ -437,6 +438,7 @@ impl YomitanWriter {
     pub fn import_dictionary_zip_file<Z, Callback>(
         &mut self,
         zip_file: &Z,
+        asset_dir: &PathBuf,
         lang: &str,
         progress_callback: Callback,
     ) -> anyhow::Result<YomitanZipImportResult, CJDicError>
@@ -451,6 +453,27 @@ impl YomitanWriter {
 
         let cursor = Cursor::new(zip_file.bytes()?);
         let mut archive = ZipArchive::new(cursor)?;
+
+        for i in 0..archive.len() {
+            // Metadata — borrow ends before by_index_raw
+            let (name, is_dir) = {
+                let f = archive.by_index(i)?;
+                (f.name().to_owned(), f.is_dir())
+            };
+
+            if !name.starts_with("assets") || is_dir {
+                continue;
+            }
+
+            let out_path = asset_dir.join(name);
+            if let Some(parent) = out_path.parent() {
+                create_dir_all(parent)?;
+            }
+
+            let mut entry = archive.by_index(i)?;
+            let mut out = File::create(&out_path)?;
+            io::copy(&mut entry, &mut out)?; // writes plain bytes
+        }
 
         let index_file = match archive.by_name("index.json") {
             Ok(mut f) => {

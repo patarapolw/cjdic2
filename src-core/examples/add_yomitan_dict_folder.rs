@@ -17,7 +17,7 @@ fn main() -> Result<(), anyhow::Error> {
         println!("{:?}", p);
     })?;
 
-    let zip_dir = Path::new("src-tauri/resources/yomitan");
+    let zip_dir = Path::new("tmp/yomitan");
     println!("zip_dir: {:?}", absolute(zip_dir)); // Relative to workspace root
 
     for entry in
@@ -31,9 +31,15 @@ fn main() -> Result<(), anyhow::Error> {
 
             println!(
                 "{:?}",
-                AppService::import_yomitan_zip_file(&mut writer, &p, "ja", |progress| {
-                    println!("{:?}", progress);
-                })?,
+                AppService::import_yomitan_zip_file(
+                    &mut writer,
+                    &p,
+                    &zip_dir.to_path_buf(),
+                    "ja",
+                    |progress| {
+                        println!("{:?}", progress);
+                    }
+                )?,
             );
         } else {
             println!("not zip_file: {:?}", p);

@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 use rusqlite::{Connection, params_from_iter};
@@ -166,6 +166,7 @@ impl AppService {
     pub fn load_yomitan_zip_dir<Z, LoadCallback, ImportCallback>(
         &self,
         zip_dir: Vec<Z>,
+        asset_dir: &PathBuf,
         lang: &str,
         load_callback: LoadCallback,
         import_callback: ImportCallback,
@@ -246,7 +247,13 @@ impl AppService {
             let mut writer = YomitanWriter::new(self.db.dir.clone())?;
             for z in new_dicts.clone().iter() {
                 if let Some(zip_file) = dir_zip_map.get(z) {
-                    Self::import_yomitan_zip_file(&mut writer, *zip_file, lang, &import_callback)?;
+                    Self::import_yomitan_zip_file(
+                        &mut writer,
+                        *zip_file,
+                        &asset_dir,
+                        lang,
+                        &import_callback,
+                    )?;
                 }
             }
         }
@@ -268,6 +275,7 @@ impl AppService {
     pub fn import_yomitan_zip_file<Z, Callback>(
         writer: &mut YomitanWriter, // Reuse existing connection
         zip_file: &Z,
+        asset_dir: &PathBuf,
         lang: &str,
         progress_callback: Callback,
     ) -> Result<YomitanZipImportResult, CJDicError>
@@ -275,7 +283,7 @@ impl AppService {
         Z: ZipSource,
         Callback: Fn(YomitanProgress),
     {
-        Ok(writer.import_dictionary_zip_file(zip_file, lang, progress_callback)?)
+        Ok(writer.import_dictionary_zip_file(zip_file, asset_dir, lang, progress_callback)?)
     }
 
     pub fn remove_yomitan_dictionary(

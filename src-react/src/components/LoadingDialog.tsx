@@ -79,9 +79,9 @@ function LoadingDialog() {
       const dicts: YomitanDownloadDictEntry[] = [];
 
       if (lang === "ja") {
-        const filename = "Pixiv.zip";
-        const filepath = `yomitan/${lang}/${filename}`;
-        const existing = existing_dicts.find((d) => d.bundle_name === filename);
+        var filename = "PixivLight.zip";
+        var filepath = `yomitan/${lang}/${filename}`;
+        var existing = existing_dicts.find((d) => d.bundle_name === filename);
         if (!existing) {
           // Maybe check revision update
           dicts.push({
@@ -89,7 +89,7 @@ function LoadingDialog() {
             url:
               (await ghLatestReleaseURL(
                 "MarvNC/pixiv-yomitan",
-                /^Pixiv_.+\.zip$/,
+                /^PixivLight_.+\.zip$/,
               ).catch((e) => {
                 console.error(e);
                 return "";

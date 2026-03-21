@@ -2,10 +2,12 @@ import { createElement as h } from "react";
 
 export default function Glossary({
   glossary,
+  yomitanURL,
   maxLength,
   onTermClicked,
 }: {
   glossary: any;
+  yomitanURL: string;
   maxLength?: number;
   onTermClicked: (t: string) => void;
 }) {
@@ -29,7 +31,7 @@ export default function Glossary({
 
   // GlossaryImage
   if ("type" in glossary && glossary.type === "image") {
-    return <GlossaryImage {...glossary} />;
+    return <GlossaryImage img={glossary} yomitanURL={yomitanURL} />;
   }
 
   // GlossaryStructuredContent
@@ -38,8 +40,7 @@ export default function Glossary({
     return (
       <StructuredContent
         node={sc.content}
-        maxLength={maxLength}
-        onTermClicked={onTermClicked}
+        {...{ yomitanURL, maxLength, onTermClicked }}
       />
     );
   }
@@ -53,10 +54,10 @@ export default function Glossary({
   return null;
 }
 
-function GlossaryImage(img: any) {
+function GlossaryImage({ img, yomitanURL }: { img: any; yomitanURL: string }) {
   return (
     <img
-      src={img.path}
+      src={`${yomitanURL || ""}/${img.path}`}
       width={img.width}
       height={img.height}
       title={img.title}
@@ -72,10 +73,12 @@ function GlossaryImage(img: any) {
 
 function StructuredContent({
   node,
+  yomitanURL,
   maxLength,
   onTermClicked,
 }: {
   node: any;
+  yomitanURL: string;
   maxLength?: number;
   onTermClicked: (t: string) => void;
 }): any {
@@ -100,8 +103,7 @@ function StructuredContent({
           <StructuredContent
             key={i}
             node={n}
-            maxLength={maxLength}
-            onTermClicked={onTermClicked}
+            {...{ yomitanURL, maxLength, onTermClicked }}
           />
         ))}
       </>
@@ -118,7 +120,7 @@ function StructuredContent({
 
   // Image
   if (tag === "img") {
-    return <GlossaryImage {...node} />;
+    return <GlossaryImage img={node} yomitanURL={yomitanURL} />;
   }
 
   // Link
@@ -145,8 +147,7 @@ function StructuredContent({
         {content ? (
           <StructuredContent
             node={content}
-            maxLength={maxLength}
-            onTermClicked={onTermClicked}
+            {...{ yomitanURL, maxLength, onTermClicked }}
           />
         ) : null}
       </a>
@@ -159,6 +160,11 @@ function StructuredContent({
   return h(
     tag,
     { style: block.style, title: block.title, open: block.open },
-    StructuredContent({ node: block.content, maxLength, onTermClicked }),
+    StructuredContent({
+      node: block.content,
+      yomitanURL,
+      maxLength,
+      onTermClicked,
+    }),
   );
 }

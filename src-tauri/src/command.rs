@@ -34,38 +34,36 @@ pub async fn init_yomitan(
     lang: String,
     state: tauri::State<'_, AppService>,
 ) -> Result<(), CJDicError> {
-    let app_dir = app
+    let data_dir = app
         .path()
         .app_data_dir()
         .map_err(|e| CJDicError::Error(e.to_string()))?;
 
+    let yomitan_assets = data_dir.join("yomitan");
+
     for d in dicts.iter().clone() {
-        let zip_path = app_dir.join(&d.filepath);
+        let zip_path = data_dir.join(&d.filepath);
         if zip_path.exists() && File::open(zip_path).is_ok_and(|f| ZipArchive::new(f).is_ok()) {
             continue;
         }
 
-        download_url_local(
-            d.url.clone(),
-            app_dir.clone(),
-            d.filepath.clone(),
-            |progress| {
-                app.emit("download-url-progress", progress).unwrap();
-            },
-        )
+        download_url_local(&d.url, &data_dir.clone(), &d.filepath, |progress| {
+            app.emit("download-url-progress", progress).unwrap();
+        })
         .await
         .map_err(|e| CJDicError::Error(e.to_string()))?;
     }
 
     let zip_files: Vec<PathBuf> = dicts
         .into_iter()
-        .map(|d| app_dir.join(&d.filepath))
+        .map(|d| data_dir.join(&d.filepath))
         .collect();
 
     let update_count = Cell::new(0usize);
 
     state.load_yomitan_zip_dir(
         zip_files,
+        &yomitan_assets,
         lang.as_str(),
         |r| {
             update_count.set(update_count.get() + r.new_dicts.len() + r.to_be_removed_dicts.len());
@@ -97,6 +95,9 @@ pub async fn import_yomitan_dict(
         .path()
         .app_data_dir()
         .map_err(|e| CJDicError::Error(e.to_string()))?;
+
+    let yomitan_assets = data_dir.join("yomitan");
+
     data_dir.push("yomitan");
     data_dir.push(lang);
     data_dir.push(bundle_name);
@@ -104,7 +105,7 @@ pub async fn import_yomitan_dict(
     let mut writer = state.get_yomitan_writer(|r| {
         app.emit("yomitan-import-progress", r).unwrap();
     })?;
-    AppService::import_yomitan_zip_file(&mut writer, &data_dir, lang, |r| {
+    AppService::import_yomitan_zip_file(&mut writer, &data_dir, &yomitan_assets, lang, |r| {
         app.emit("yomitan-import-progress", r).unwrap();
     })
 }
@@ -151,16 +152,16 @@ struct DownloadProgress {
 }
 
 async fn download_url_local<Callback>(
-    url: String,
-    data_dir: PathBuf,
-    filepath: String,
+    url: &str,
+    data_dir: &PathBuf,
+    filepath: &str,
     callback: Callback,
 ) -> Result<bool, CJDicError>
 where
     Callback: Fn(DownloadProgress),
 {
     let client = Client::new();
-    let file_pf = data_dir.join(filepath.as_str());
+    let file_pf = data_dir.join(filepath);
 
     let temp_pf = data_dir.join(format!("{}.dl-tmp", filepath));
     let temp_path = temp_pf.as_path();
@@ -170,7 +171,7 @@ where
         .map(|m| m.len())
         .unwrap_or(0);
 
-    let mut request = client.get(url.as_str());
+    let mut request = client.get(url);
     // Request only the remaining bytes
     if existing_size > 0 {
         request = request.header("Range", format!("bytes={}-", existing_size));
@@ -208,8 +209,8 @@ where
             downloaded += chunk.len() as u64;
 
             callback(DownloadProgress {
-                url: url.clone(),
-                filepath: filepath.clone(),
+                url: url.to_owned(),
+                filepath: filepath.to_owned(),
                 content_length,
                 downloaded,
             });
@@ -235,14 +236,10 @@ where
 }
 
 #[tauri::command]
-pub async fn download_url(
-    app: AppHandle,
-    url: String,
-    filepath: String,
-) -> Result<bool, CJDicError> {
+pub async fn download_url(app: AppHandle, url: &str, filepath: &str) -> Result<bool, CJDicError> {
     download_url_local(
         url,
-        app.path()
+        &app.path()
             .app_data_dir()
             .map_err(|e| CJDicError::Error(e.to_string()))?,
         filepath,
