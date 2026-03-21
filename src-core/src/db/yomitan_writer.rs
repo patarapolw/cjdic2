@@ -456,23 +456,32 @@ impl YomitanWriter {
 
         for i in 0..archive.len() {
             // Metadata — borrow ends before by_index_raw
-            let (name, is_dir) = {
+            if let (Some(asset_name), is_dir) = {
                 let f = archive.by_index(i)?;
-                (f.name().to_owned(), f.is_dir())
-            };
+                (f.enclosed_name(), f.is_dir())
+            } {
+                if is_dir {
+                    continue;
+                }
 
-            if !name.starts_with("assets") || is_dir {
-                continue;
+                if asset_name.parent().is_none() {
+                    continue;
+                }
+
+                match asset_name.extension().and_then(|e| e.to_str()) {
+                    Some("json") => continue,
+                    _ => {}
+                }
+
+                let out_path = asset_dir.join(asset_name);
+                if let Some(parent) = out_path.parent() {
+                    create_dir_all(parent)?;
+                }
+
+                let mut entry = archive.by_index(i)?;
+                let mut out = File::create(&out_path)?;
+                io::copy(&mut entry, &mut out)?; // writes plain bytes
             }
-
-            let out_path = asset_dir.join(name);
-            if let Some(parent) = out_path.parent() {
-                create_dir_all(parent)?;
-            }
-
-            let mut entry = archive.by_index(i)?;
-            let mut out = File::create(&out_path)?;
-            io::copy(&mut entry, &mut out)?; // writes plain bytes
         }
 
         let index_file = match archive.by_name("index.json") {
