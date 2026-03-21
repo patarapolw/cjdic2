@@ -50,7 +50,11 @@ html.dark .glossaries {
     word-break: keep-all;
   }
 
-  img {
+  img[src$=".svg"] {
     filter: invert(1) hue-rotate(180deg);
+  }
+
+  rt {
+    font-size: 50%;
   }
 }
