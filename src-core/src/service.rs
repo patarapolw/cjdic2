@@ -40,6 +40,7 @@ pub enum SqlParam {
     Bool(bool),
 }
 
+#[derive(Clone)]
 pub struct AppService {
     db: Database,
     tokenizer: Tokenizer,

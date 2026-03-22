@@ -6,3 +6,6 @@ resolver = "3"
 lto = true
 codegen-units = 1
 strip = true
+# debug = true       # keep symbols
+# lto = false        # disable LTO
+# opt-level = 1      # reduce but don't maximize optimization

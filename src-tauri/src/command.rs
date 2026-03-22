@@ -59,26 +59,35 @@ pub async fn init_yomitan(
         .map(|d| data_dir.join(&d.filepath))
         .collect();
 
-    let update_count = Cell::new(0usize);
+    let state = state.inner().clone();
+    let app_clone = app.clone();
 
-    state.load_yomitan_zip_dir(
-        zip_files,
-        &yomitan_assets,
-        lang.as_str(),
-        |r| {
-            update_count.set(update_count.get() + r.new_dicts.len() + r.to_be_removed_dicts.len());
-            app.emit("load-yomitan-dir", r).unwrap();
-        },
-        |r| {
-            update_count.set(update_count.get() + 1);
-            app.emit("yomitan-import-progress", r).unwrap();
-        },
-    )?;
+    let update_count = tokio::task::spawn_blocking(move || {
+        let update_count = Cell::new(0usize);
 
-    if update_count.get() > 0 {
+        state.load_yomitan_zip_dir(
+            zip_files,
+            &yomitan_assets,
+            lang.as_str(),
+            |r| {
+                update_count
+                    .set(update_count.get() + r.new_dicts.len() + r.to_be_removed_dicts.len());
+                app.emit("load-yomitan-dir", r).unwrap();
+            },
+            |r| {
+                update_count.set(update_count.get() + 1);
+                app.emit("yomitan-import-progress", r).unwrap();
+            },
+        )?;
+        Ok::<usize, CJDicError>(update_count.get())
+    })
+    .await
+    .map_err(|e| CJDicError::Error(e.to_string()))??;
+
+    if update_count > 0 {
         println!("Request app restart?",);
         // Request app restart anyway
-        app.request_restart();
+        app_clone.request_restart();
     }
 
     Ok(())
