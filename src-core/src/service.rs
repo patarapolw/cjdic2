@@ -7,7 +7,7 @@ use rusqlite::{Connection, params_from_iter};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    Timer, ZipSource,
+    Timer,
     db::{
         DBFILE, Database, DbChild, YomitanProgress, YomitanRow, YomitanWriter,
         YomitanZipImportResult,
@@ -163,24 +163,23 @@ impl AppService {
         Ok(out)
     }
 
-    pub fn load_yomitan_zip_dir<Z, LoadCallback, ImportCallback>(
+    pub fn load_yomitan_zip_dir<LoadCallback, ImportCallback>(
         &self,
-        zip_dir: Vec<Z>,
+        zip_dir: Vec<PathBuf>,
         asset_dir: &PathBuf,
         lang: &str,
         load_callback: LoadCallback,
         import_callback: ImportCallback,
     ) -> Result<LoadYomitanZipDirResult, CJDicError>
     where
-        Z: ZipSource,
         LoadCallback: Fn(LoadYomitanZipDirResult),
         ImportCallback: Fn(YomitanProgress),
     {
-        let mut dir_zip_map: HashMap<String, &Z> = HashMap::new();
+        let mut dir_zip_map: HashMap<String, &PathBuf> = HashMap::new();
         let mut zip_dir_ord: HashMap<String, usize> = HashMap::new();
 
         for (i, entry) in zip_dir.iter().enumerate() {
-            let filename = entry.file_name();
+            let filename = entry.file_name().and_then(|n| n.to_str()).unwrap_or("");
             dir_zip_map.insert(filename.to_string(), entry);
             zip_dir_ord.insert(filename.to_string(), i);
         }
@@ -276,15 +275,14 @@ impl AppService {
         })
     }
 
-    pub fn import_yomitan_zip_file<Z, Callback>(
+    pub fn import_yomitan_zip_file<Callback>(
         writer: &mut YomitanWriter, // Reuse existing connection
-        zip_file: &Z,
+        zip_file: &PathBuf,
         asset_dir: &PathBuf,
         lang: &str,
         progress_callback: Callback,
     ) -> Result<YomitanZipImportResult, CJDicError>
     where
-        Z: ZipSource,
         Callback: Fn(YomitanProgress),
     {
         Ok(writer.import_dictionary_zip_file(zip_file, asset_dir, lang, progress_callback)?)

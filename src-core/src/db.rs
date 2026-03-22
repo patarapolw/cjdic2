@@ -16,7 +16,7 @@ mod yomitan;
 pub use yomitan::YomitanRow;
 
 mod yomitan_writer;
-pub use yomitan_writer::{YomitanProgress, YomitanWriter, YomitanZipImportResult, ZipSource};
+pub use yomitan_writer::{YomitanProgress, YomitanWriter, YomitanZipImportResult};
 
 use crate::{CJDicError, tokenizer::Tokenizer};
 

@@ -4,11 +4,10 @@ use rusqlite::{Connection, OptionalExtension, Result, Transaction, params};
 use serde::Serialize;
 use serde_json::Value;
 use std::{
-    borrow::Cow,
     collections::HashMap,
     env::current_dir,
     fs::{File, create_dir_all},
-    io::{self, Cursor, Read},
+    io::{self, Read},
     path::{Path, PathBuf},
 };
 use zip::ZipArchive;
@@ -28,21 +27,6 @@ pub(super) fn normalize_term(s: &str) -> String {
         .filter(|c| c.is_alphabetic())
         .flat_map(|c| c.to_lowercase())
         .collect()
-}
-
-pub trait ZipSource {
-    fn file_name(&self) -> &str;
-    fn bytes(&self) -> std::io::Result<Cow<'_, [u8]>>;
-}
-
-impl ZipSource for PathBuf {
-    fn file_name(&self) -> &str {
-        Path::file_name(self).and_then(|n| n.to_str()).unwrap_or("")
-    }
-
-    fn bytes(&self) -> std::io::Result<Cow<'_, [u8]>> {
-        std::fs::read(self).map(Cow::Owned)
-    }
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -446,24 +430,23 @@ impl YomitanWriter {
         Ok(())
     }
 
-    pub fn import_dictionary_zip_file<Z, Callback>(
+    pub fn import_dictionary_zip_file<Callback>(
         &mut self,
-        zip_file: &Z,
+        zip_file: &PathBuf,
         asset_dir: &PathBuf,
         lang: &str,
         progress_callback: Callback,
     ) -> anyhow::Result<YomitanZipImportResult, CJDicError>
     where
-        Z: ZipSource,
         Callback: Fn(YomitanProgress),
     {
-        let bundle_name = zip_file.file_name();
+        let bundle_name = zip_file.file_name().and_then(|n| n.to_str()).unwrap_or("");
         let _timer = Timer::new(format!("Importing {}", bundle_name));
 
         self.conn.execute_batch("PRAGMA foreign_keys = off")?;
 
-        let cursor = Cursor::new(zip_file.bytes()?);
-        let mut archive = ZipArchive::new(cursor)?;
+        let file = File::open(&zip_file)?;
+        let mut archive = ZipArchive::new(file)?;
 
         let mut asset_count = 0;
 

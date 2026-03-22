@@ -7,7 +7,7 @@ mod service;
 mod tokenizer;
 mod util;
 
-pub use db::{YomitanProgress, YomitanRow, YomitanZipImportResult, ZipSource};
+pub use db::{YomitanProgress, YomitanRow, YomitanZipImportResult};
 pub use error::CJDicError;
 pub use service::{AppService, SqlParam, YomitanDictEntry};
 pub use tokenizer::TokenizeSegment;
