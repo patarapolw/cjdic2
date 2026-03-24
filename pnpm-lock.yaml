@@ -14,6 +14,9 @@ importers:
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
+      sharp:
+        specifier: ^0.34.5
+        version: 0.34.5
 
   js-server:
     dependencies:
