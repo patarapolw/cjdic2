@@ -1,6 +1,7 @@
 packages:
   - js-server
   - src-react
+  - cjdic2-next
 
 onlyBuiltDependencies:
   - esbuild

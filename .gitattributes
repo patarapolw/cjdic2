@@ -1,2 +1,3 @@
 # flutter_app/** linguist-vendored
-# src-tauri/gen/** linguist-vendored
+src-tauri/gen/android/** linguist-vendored
+cjdic2-next/src-tauri/gen/android/** linguist-vendored
