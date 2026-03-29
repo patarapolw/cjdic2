@@ -1,6 +1,6 @@
 [workspace]
 members = ["src-core", "src-tauri"]
-exclude = ["cjdic2-next/src-tauri"]
+# exclude = ["cjdic2-next/src-tauri"]
 resolver = "3"
 
 [profile.release]

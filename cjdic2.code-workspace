@@ -4,20 +4,17 @@
       "path": ".",
     },
     {
-      "path": "cjdic2-next",
-    },
-    {
       "path": "js-server",
     },
-    // {
-    //   "path": "src-core",
-    // },
-    // {
-    //   "path": "src-react",
-    // },
-    // {
-    //   "path": "src-tauri",
-    // },
+    {
+      "path": "src-core",
+    },
+    {
+      "path": "src-react",
+    },
+    {
+      "path": "src-tauri",
+    },
     {
       "path": "storage-worker",
     },
